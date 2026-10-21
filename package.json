@@ -1,6 +1,6 @@
 {
   "name": "desk-calendar",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "한국 공휴일과 반복 일정·알림을 지원하는 데스크톱 캘린더",
   "main": "main.js",
   "scripts": {
