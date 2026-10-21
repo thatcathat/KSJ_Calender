@@ -8,6 +8,7 @@ const { holidayMap } = require('./src/holidays');
 const { expandAll } = require('./src/recurrence');
 const events = require('./src/events');
 const { Notifier } = require('./src/notifier');
+const { createUpdater } = require('./src/updater');
 
 const APP_ID = 'com.deskcalendar.app';
 const START_HIDDEN = process.argv.includes('--hidden');
@@ -16,6 +17,7 @@ let win = null;
 let tray = null;
 let store = null;
 let notifier = null;
+let updater = null;
 let quitting = false;
 
 // 하나만 실행
@@ -151,16 +153,22 @@ function watchPointer() {
   check();
 }
 
-function createTray() {
-  tray = new Tray(iconImage(16));
-  tray.setToolTip('데스크 캘린더');
-  tray.setContextMenu(Menu.buildFromTemplate([
+function trayMenu() {
+  const ready = updater && updater.status().state === 'ready';
+  return Menu.buildFromTemplate([
     { label: '열기', click: () => showWindow() },
     { label: '오늘 보기', click: () => showWindow('navigate', null) },
     { label: '새 일정', click: () => showWindow('new-event') },
     { type: 'separator' },
+    ...(ready ? [{ label: `재시작해서 업데이트 (${updater.status().newVersion})`, click: () => updater.install() }] : []),
     { label: '종료', click: () => { quitting = true; app.quit(); } },
-  ]));
+  ]);
+}
+
+function createTray() {
+  tray = new Tray(iconImage(16));
+  tray.setToolTip('데스크 캘린더');
+  tray.setContextMenu(trayMenu());
   tray.on('click', () => showWindow());
 }
 
@@ -193,6 +201,26 @@ function notify({ title, body, date }) {
   const n = new Notification({ title, body, icon: asset('icon.png'), silent: false });
   n.on('click', () => showWindow('navigate', date));
   n.show();
+}
+
+// 자동 업데이트는 설치형에서만 (개발 모드·포터블판은 제외)
+function setupUpdater() {
+  updater = createUpdater({
+    supported: app.isPackaged && !PORTABLE_EXE && process.platform === 'win32',
+    onStatus: (status) => { if (win) win.webContents.send('update-status', status); },
+    onReady: (status) => {
+      if (tray) tray.setContextMenu(trayMenu());
+      if (!Notification.isSupported()) return;
+      const n = new Notification({
+        title: `새 버전 ${status.newVersion}을 설치할 준비가 됐어요`,
+        body: '클릭하면 재시작해서 업데이트해요. 그냥 두면 다음에 앱을 종료할 때 설치돼요.',
+        icon: asset('icon.png'),
+      });
+      n.on('click', () => updater.install());
+      n.show();
+    },
+  });
+  updater.start();
 }
 
 // ── IPC ──────────────────────────────────────────
@@ -255,6 +283,10 @@ function registerIpc() {
     return store.data.settings;
   });
   handle('data:open-folder', () => shell.openPath(store.dir));
+
+  handle('update:status', () => updater.status());
+  handle('update:check', () => updater.check());
+  handle('update:install', () => updater.install());
 }
 
 app.whenReady().then(() => {
@@ -266,6 +298,7 @@ app.whenReady().then(() => {
   ensureStartMenuShortcut();
   notifier = new Notifier(() => store.data.events, notify);
   notifier.start();
+  setupUpdater();
 
   // 자정이 지나면 화면의 '오늘'을 갱신
   let lastDay = new Date().toDateString();

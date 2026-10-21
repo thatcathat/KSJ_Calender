@@ -1,0 +1,39 @@
+# v로 시작하는 태그(예: v1.1.0)를 push하면 Windows에서 빌드해 GitHub Releases에 올린다.
+# 설치형과 함께 올라가는 latest.yml을 보고 설치된 앱들이 자동 업데이트한다.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # Release 만들기·파일 올리기
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: 태그와 package.json 버전 확인
+        shell: bash
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          if [ "$v" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::태그($GITHUB_REF_NAME)와 package.json 버전($v)이 달라요."
+            exit 1
+          fi
+
+      - name: 빌드하고 Release에 올리기
+        run: npx electron-builder --win nsis portable --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

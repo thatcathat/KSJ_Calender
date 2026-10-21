@@ -26,9 +26,26 @@ npm start
 Windows에서:
 
 ```bash
-npm run dist            # dist\DeskCalendar Setup 1.0.0.exe  (설치형, 권장)
-npm run dist:portable   # dist\DeskCalendar 1.0.0.exe        (설치 없이 실행)
+npm run dist            # dist\DeskCalendar-Setup-1.0.0.exe     (설치형, 권장)
+npm run dist:portable   # dist\DeskCalendar-portable-1.0.0.exe  (설치 없이 실행)
 ```
+
+로컬 빌드는 GitHub에 올리지 않습니다(`--publish never`). 배포는 아래 '새 버전 배포'로 하세요.
+
+## 새 버전 배포 · 자동 업데이트
+
+`v`로 시작하는 태그를 push하면 GitHub Actions(`.github/workflows/release.yml`)가 Windows에서 빌드해
+[Releases](https://github.com/thatcathat/KSJ_Calender/releases)에 설치형·포터블과 `latest.yml`을 올립니다.
+
+```bash
+npm version patch       # 1.0.0 → 1.0.1, package.json 수정·커밋·태그(v1.0.1)까지 한 번에 (기능 추가는 minor)
+git push --follow-tags  # 커밋과 태그를 함께 push → 빌드 시작
+```
+
+- 태그와 `package.json` 버전이 다르거나 테스트가 실패하면 빌드가 멈춥니다.
+- 설치형 앱은 시작 10초 뒤와 6시간마다 새 버전을 확인해 백그라운드로 받아 두고, 알림·트레이 메뉴·설정에서 '재시작해서 업데이트'를 누르거나 다음에 앱을 종료할 때 설치합니다.
+- 설정 아래쪽에서 현재 버전을 보고 직접 '업데이트 확인'을 할 수 있습니다.
+- **포터블판과 개발 모드(`npm start`)는 자동 업데이트하지 않습니다.**
 
 > 서명되지 않은 exe라 처음 실행할 때 SmartScreen 경고가 나올 수 있어요. '추가 정보 → 실행'을 누르면 됩니다.
 
@@ -57,6 +74,7 @@ main.js            창·트레이·IPC·알림 연결
 preload.js         화면에 노출하는 API
 src/dates.js       날짜 유틸(시간대 영향 없는 문자열 날짜)
 src/holidays.js    한국 공휴일 계산
+src/updater.js     자동 업데이트(electron-updater, GitHub Releases)
 src/recurrence.js  반복 일정 전개(rrule)
 src/events.js      일정·메모 추가/수정/삭제 로직
 src/notifier.js    알림 스케줄러

@@ -6,11 +6,17 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.js",
-    "dist": "electron-builder --win nsis",
-    "dist:portable": "electron-builder --win portable"
+    "dist": "electron-builder --win nsis --publish never",
+    "dist:portable": "electron-builder --win portable --publish never"
   },
   "license": "MIT",
+  "author": "thatcathat",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thatcathat/KSJ_Calender.git"
+  },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "korean-lunar-calendar": "^0.4.0",
     "rrule": "^2.8.1"
   },
@@ -39,7 +45,17 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "데스크 캘린더",
-      "uninstallDisplayName": "데스크 캘린더"
+      "uninstallDisplayName": "데스크 캘린더",
+      "artifactName": "DeskCalendar-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "DeskCalendar-portable-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "thatcathat",
+      "repo": "KSJ_Calender",
+      "releaseType": "release"
     },
     "directories": {
       "output": "dist"

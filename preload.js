@@ -8,7 +8,7 @@ async function call(channel, ...args) {
   return res.value;
 }
 
-const LISTEN = ['navigate', 'new-event', 'day-changed', 'win-state', 'pointer-out'];
+const LISTEN = ['navigate', 'new-event', 'day-changed', 'win-state', 'pointer-out', 'update-status'];
 
 contextBridge.exposeInMainWorld('api', {
   range: (start, end) => call('range', start, end),
@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('api', {
   getSettings: () => call('settings:get'),
   setSettings: (patch) => call('settings:set', patch),
   openDataFolder: () => call('data:open-folder'),
+
+  update: {
+    status: () => call('update:status'),
+    check: () => call('update:check'),
+    install: () => call('update:install'),
+  },
 
   win: {
     minimize: () => call('win:minimize'),

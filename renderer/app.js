@@ -737,6 +737,41 @@ $('#chAdd').addEventListener('click', () => {
 $('#openDataBtn').addEventListener('click', () => api.openDataFolder().catch(fail));
 $('#settingsBtn').addEventListener('click', () => { renderSettings(); sdlg.showModal(); });
 
+// ── 업데이트 ─────────────────────────────────
+let update = null;
+
+function renderUpdate() {
+  if (!update) return;
+  const { state: st, version, newVersion, percent } = update;
+  $('#appVersion').textContent = `버전 ${version}`;
+  const text = {
+    unsupported: '설치형에서만 자동 업데이트돼요.',
+    checking: '확인하는 중…',
+    latest: '최신 버전이에요.',
+    downloading: `새 버전 ${newVersion} 받는 중… ${percent || 0}%`,
+    ready: `새 버전 ${newVersion}을 설치할 준비가 됐어요.`,
+    error: '업데이트를 확인하지 못했어요.',
+  }[st] || '';
+  $('#updateText').textContent = text;
+  const btn = $('#updateBtn');
+  btn.hidden = st === 'unsupported';
+  btn.disabled = st === 'checking' || st === 'downloading';
+  btn.textContent = st === 'ready' ? '재시작해서 업데이트' : st === 'error' ? '다시 확인' : '업데이트 확인';
+}
+
+function setUpdate(next) {
+  const becameReady = next.state === 'ready' && (!update || update.state !== 'ready');
+  update = next;
+  renderUpdate();
+  if (becameReady) toast(`새 버전 ${next.newVersion}이 준비됐어요`, { label: '재시작', run: () => api.update.install().catch(fail) });
+}
+
+$('#updateBtn').addEventListener('click', () => {
+  if (update && update.state === 'ready') api.update.install().catch(fail);
+  else api.update.check().then(setUpdate).catch(fail);
+});
+api.on('update-status', setUpdate);
+
 // ── 내비게이션 ───────────────────────────────
 async function select(d, { reload } = {}) {
   const before = state.range;
@@ -995,4 +1030,5 @@ for (const d of document.querySelectorAll('dialog')) d.addEventListener('toggle'
   } catch (err) { fail(err); }
   await refresh();
   renderMemos();
+  api.update.status().then(setUpdate).catch(() => {});
 })();
