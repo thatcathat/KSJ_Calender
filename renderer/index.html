@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>데스크 캘린더</title>
+  <link rel="stylesheet" href="fonts/plex-kr.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 창 끌기 띠 + 창 버튼 (기본 제목 표시줄 대신). 맨 위 가장자리에 마우스를 올리면 내려온다 -->
+  <div class="tb-hotzone" id="tbHotzone" aria-hidden="true"></div>
+  <div class="titlebar" id="titlebar">
+    <span class="titlebar-name">데스크 캘린더</span>
+    <div class="win-controls">
+      <button class="win-btn" id="winMin" title="최소화" aria-label="최소화">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10"/></svg>
+      </button>
+      <button class="win-btn" id="winMax" title="최대화" aria-label="최대화">
+        <svg class="ic-max" viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="5.5" width="9" height="9" rx="1"/></svg>
+        <svg class="ic-restore" viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="7.5" width="7.5" height="7.5" rx="1"/><path d="M7.5 7.5V6a1 1 0 0 1 1-1H14a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-1.5"/></svg>
+      </button>
+      <button class="win-btn close" id="winClose" title="닫기" aria-label="닫기">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 위아래 가장자리에서 잘리는 내용을 흐리게 -->
+  <div class="edge-blur top" id="edgeTop" aria-hidden="true"></div>
+  <div class="edge-blur bottom" id="edgeBottom" aria-hidden="true"></div>
+  <div class="scroller" id="scroller">
+  <main class="page">
+    <!-- 1. 달력 -->
+    <section class="cal" aria-label="달력">
+      <header class="cal-head">
+        <h1 class="cal-title" id="calTitle">2026년 10월</h1>
+        <div class="cal-nav">
+          <button class="icon-btn" id="prevBtn" title="이전 (Page Up)" aria-label="이전">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg>
+          </button>
+          <button class="text-btn" id="todayBtn" title="오늘로 이동 (T)">오늘</button>
+          <button class="icon-btn" id="nextBtn" title="다음 (Page Down)" aria-label="다음">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5"/></svg>
+          </button>
+          <div class="seg" role="group" aria-label="달력 보기">
+            <button id="modeMonth" aria-pressed="true">월</button>
+            <button id="modeWeek" aria-pressed="false">주</button>
+          </div>
+          <button class="icon-btn" id="settingsBtn" title="설정" aria-label="설정">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="weekdays" id="weekdays" aria-hidden="true"></div>
+      <div class="grid" id="grid" role="grid" aria-labelledby="calTitle"></div>
+    </section>
+
+    <!-- 2. 선택한 날짜의 일정 -->
+    <section class="day" aria-label="선택한 날짜의 일정">
+      <header class="daypage" id="daypage">
+        <div class="daypage-num" id="dayNum">21</div>
+        <div class="daypage-info">
+          <div class="daypage-wd" id="dayWd">수요일</div>
+          <div class="daypage-sub" id="daySub"></div>
+          <div class="daypage-hol" id="dayHol"></div>
+        </div>
+        <button class="primary-btn" id="addEventBtn" title="새 일정 (N)" aria-label="일정 추가">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
+          <span class="btn-label">일정 추가</span>
+        </button>
+      </header>
+      <ul class="agenda" id="agenda"></ul>
+    </section>
+
+    <!-- 3. 메모 -->
+    <section class="memos" aria-labelledby="memoHeading">
+      <header class="memos-head">
+        <h2 id="memoHeading">메모</h2>
+        <button class="text-btn" id="addMemoBtn">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
+          메모 추가
+        </button>
+      </header>
+      <ul class="memo-list" id="memoList"></ul>
+    </section>
+  </main>
+  </div>
+
+  <!-- 일정 편집 -->
+  <dialog id="eventDialog" class="sheet">
+    <form id="eventForm" method="dialog" novalidate>
+      <div class="sheet-head">
+        <h2 id="eventDialogTitle">새 일정</h2>
+        <button type="button" class="icon-btn" data-close aria-label="닫기">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg>
+        </button>
+      </div>
+
+      <input class="title-input" name="title" placeholder="제목" autocomplete="off" maxlength="200">
+
+      <div class="field-row">
+        <label class="switch"><input type="checkbox" name="allDay"><span>종일</span></label>
+      </div>
+
+      <div class="when-grid">
+        <span class="lbl">시작</span>
+        <input type="date" name="startDate" required>
+        <input type="time" name="startTime" step="300">
+        <span class="lbl">종료</span>
+        <input type="date" name="endDate" required>
+        <input type="time" name="endTime" step="300">
+      </div>
+      <p class="form-error" id="whenError" hidden></p>
+
+      <fieldset class="block" id="repeatBlock">
+        <legend>반복</legend>
+        <select name="freq">
+          <option value="">반복 안 함</option>
+          <option value="daily">매일</option>
+          <option value="weekly">매주</option>
+          <option value="monthly">매월</option>
+          <option value="yearly">매년</option>
+        </select>
+        <div class="repeat-detail" id="repeatDetail" hidden>
+          <label class="inline">
+            <input type="number" name="interval" min="1" max="999" value="1">
+            <span id="intervalUnit">주</span>마다
+          </label>
+          <div class="weekday-pick" id="weekdayPick" role="group" aria-label="반복 요일"></div>
+          <select name="monthlyMode" id="monthlyMode"></select>
+          <div class="inline">
+            <select name="endMode">
+              <option value="never">계속 반복</option>
+              <option value="until">날짜까지</option>
+              <option value="count">횟수만큼</option>
+            </select>
+            <input type="date" name="until" hidden>
+            <label class="inline" id="countWrap" hidden><input type="number" name="count" min="1" max="9999" value="10">회</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="block">
+        <legend>알림</legend>
+        <div class="chips" id="reminderChips"></div>
+        <select id="reminderAdd" aria-label="알림 추가"></select>
+      </fieldset>
+
+      <fieldset class="block">
+        <legend>색</legend>
+        <div class="swatches" id="swatches"></div>
+      </fieldset>
+
+      <input name="location" placeholder="장소" autocomplete="off" maxlength="300">
+      <textarea name="memo" rows="3" placeholder="설명" maxlength="5000"></textarea>
+
+      <div class="sheet-foot">
+        <button type="button" class="danger-btn" id="deleteEventBtn" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" class="text-btn" data-close>취소</button>
+        <button type="submit" class="primary-btn">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 반복 일정 범위 선택 -->
+  <dialog id="scopeDialog" class="sheet small">
+    <form method="dialog">
+      <h2 id="scopeTitle">반복 일정 수정</h2>
+      <div class="scope-options">
+        <button value="this">이 일정만</button>
+        <button value="future">이 일정과 이후 일정</button>
+        <button value="all">모든 반복 일정</button>
+      </div>
+      <div class="sheet-foot"><span class="spacer"></span><button value="cancel" class="text-btn">취소</button></div>
+    </form>
+  </dialog>
+
+  <!-- 설정 -->
+  <dialog id="settingsDialog" class="sheet">
+    <form id="settingsForm" method="dialog">
+      <div class="sheet-head">
+        <h2>설정</h2>
+        <button type="button" class="icon-btn" data-close aria-label="닫기">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg>
+        </button>
+      </div>
+      <div class="setting">
+        <span>한 주의 시작</span>
+        <div class="seg" role="group">
+          <button type="button" data-week="0">일요일</button>
+          <button type="button" data-week="1">월요일</button>
+        </div>
+      </div>
+      <label class="setting"><span>새 일정 기본 알림</span><select name="defaultReminder"></select></label>
+      <label class="setting"><span>공휴일 표시</span><input type="checkbox" name="showHolidays"></label>
+      <label class="setting"><span>창을 닫으면 트레이에서 계속 실행<small>꺼 두면 창을 닫을 때 앱이 종료되고 알림도 멈춰요.</small></span><input type="checkbox" name="closeToTray"></label>
+      <label class="setting"><span>Windows 시작 시 자동 실행<small>설치한 앱에서만 적용돼요.</small></span><input type="checkbox" name="launchAtLogin"></label>
+
+      <fieldset class="block">
+        <legend>직접 추가한 공휴일</legend>
+        <p class="hint">선거일·임시공휴일처럼 새로 지정된 쉬는 날을 넣으면 달력에 빨간 날로 표시돼요.</p>
+        <ul class="custom-holidays" id="customHolidayList"></ul>
+        <div class="inline">
+          <input type="date" id="chDate" aria-label="날짜">
+          <input id="chName" placeholder="이름 (예: 임시공휴일)" maxlength="40">
+          <button type="button" class="text-btn" id="chAdd">추가</button>
+        </div>
+      </fieldset>
+
+      <div class="sheet-foot">
+        <button type="button" class="text-btn" id="openDataBtn">데이터 폴더 열기</button>
+        <span class="spacer"></span>
+        <button type="button" class="primary-btn" data-close>닫기</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toastText"></span>
+    <button class="text-btn" id="toastAction" hidden></button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

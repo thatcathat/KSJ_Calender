@@ -1,0 +1,48 @@
+{
+  "name": "desk-calendar",
+  "version": "1.0.0",
+  "description": "한국 공휴일과 반복 일정·알림을 지원하는 데스크톱 캘린더",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder --win nsis",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "korean-lunar-calendar": "^0.4.0",
+    "rrule": "^2.8.1"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "productName": "DeskCalendar",
+  "build": {
+    "appId": "com.deskcalendar.app",
+    "productName": "DeskCalendar",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "데스크 캘린더",
+      "uninstallDisplayName": "데스크 캘린더"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  }
+}

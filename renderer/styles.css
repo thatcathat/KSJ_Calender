@@ -1,0 +1,520 @@
+/* 데스크 캘린더 — 탁상 달력과 일력(日曆)에서 가져온 디자인
+   · 차가운 종이 바탕 + 남색 잉크
+   · 빨간 일요일·공휴일, 파란 토요일 (한국 달력 관습)
+   · 선택한 날짜는 한 장씩 넘기는 일력 페이지처럼 크게 */
+
+:root {
+  --paper: #f3f5f8;
+  --sheet: #ffffff;
+  --ink: #1b2333;
+  --ink-2: #4a5468;
+  --muted: #7a8396;
+  --line: #dde2ea;
+  --line-soft: #eaeef3;
+  --hover: #e9edf3;
+  --sun: #d63b2f;
+  --sat: #2d63c8;
+  --focus: #2d63c8;
+  --danger: #c43a2f;
+
+  --c-blue: #3b6fd8;
+  --c-red: #d9483b;
+  --c-green: #2e9e62;
+  --c-amber: #c98a12;
+  --c-violet: #7e57c2;
+  --c-teal: #1e9aa0;
+  --c-slate: #5c6678;
+
+  --titlebar: 34px;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --shadow-sheet: 0 1px 0 rgba(27, 35, 51, .04), 0 12px 32px -12px rgba(27, 35, 51, .18);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #12161f;
+    --sheet: #1a202c;
+    --ink: #e8ecf3;
+    --ink-2: #b9c1d0;
+    --muted: #8d96a8;
+    --line: #2b3343;
+    --line-soft: #232a38;
+    --hover: #242c3b;
+    --sun: #f06a5e;
+    --sat: #6c9bef;
+    --focus: #6c9bef;
+    --danger: #f06a5e;
+    --c-blue: #6c9bef;
+    --c-red: #f0776b;
+    --c-green: #4fc085;
+    --c-amber: #e6ad3a;
+    --c-violet: #a888e0;
+    --c-teal: #45c0c5;
+    --c-slate: #95a0b4;
+    --shadow-sheet: 0 1px 0 rgba(0, 0, 0, .2), 0 16px 40px -16px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body { margin: 0; height: 100%; overflow: hidden; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ── 위쪽 띠 (기본 제목 표시줄 대신) ─────────────
+   평소엔 창 위로 숨어 있어 공간을 차지하지 않는다.
+   마우스를 창 맨 위 가장자리(.tb-hotzone)에 가져가면 내용 위로 겹쳐 내려오고,
+   아래로 내려가면 다시 올라간다. 띠가 숨어 있을 땐 달력 머리 줄을 잡고 창을 옮긴다. */
+.titlebar {
+  position: fixed; inset: 0 0 auto 0; height: var(--titlebar);
+  display: flex; align-items: center; justify-content: space-between;
+  padding-left: 14px;
+  background: var(--paper);
+  box-shadow: 0 1px 0 var(--line-soft), 0 8px 18px -12px rgba(0, 0, 0, .35);
+  -webkit-app-region: drag;
+  z-index: 10;
+  transform: translateY(-100%);
+  visibility: hidden;
+  transition: transform .18s ease, visibility 0s linear .18s;
+}
+body.tb-show .titlebar, .titlebar:focus-within {
+  transform: none; visibility: visible;
+  transition: transform .18s ease, visibility 0s;
+}
+/* 띠를 불러오는 감지 영역. 맨 위 몇 px는 Windows 창 크기 조절에 쓰이므로 그 아래까지 넉넉히 */
+.tb-hotzone { position: fixed; inset: 0 0 auto 0; height: 12px; z-index: 9; }
+.titlebar-name { font-size: 12px; color: var(--muted); font-weight: 500; }
+body:not(.focused) .titlebar-name { opacity: .6; }
+.win-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+.win-btn {
+  width: 44px; height: 100%; border: 0; background: transparent;
+  display: grid; place-items: center; color: var(--ink-2); padding: 0;
+}
+.win-btn svg { width: 16px; height: 16px; stroke-width: 1.4; }
+.win-btn:hover { background: var(--hover); }
+.win-btn.close:hover { background: #d63b2f; color: #fff; }
+.win-btn .ic-restore { display: none; }
+body.maximized .win-btn .ic-max { display: none; }
+body.maximized .win-btn .ic-restore { display: block; }
+
+.scroller {
+  position: absolute; inset: 0;
+  overflow-y: auto;
+}
+
+/* 달력 머리 줄도 창을 끄는 손잡이로 (버튼은 제외) */
+.cal-head { -webkit-app-region: drag; }
+.cal-head button, .cal-head .seg { -webkit-app-region: no-drag; }
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── 공통 버튼 ─────────────────────────────── */
+.icon-btn, .text-btn, .primary-btn, .danger-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: transparent; border-radius: var(--radius-s);
+  height: 32px; padding: 0 10px; white-space: nowrap;
+}
+.icon-btn { width: 32px; padding: 0; justify-content: center; color: var(--ink-2); }
+.icon-btn:hover, .text-btn:hover { background: var(--hover); }
+.text-btn { color: var(--ink-2); font-weight: 500; }
+.text-btn svg { width: 16px; height: 16px; }
+.primary-btn { background: var(--ink); color: var(--paper); font-weight: 500; padding: 0 14px; }
+.primary-btn svg { width: 16px; height: 16px; }
+.primary-btn:hover { opacity: .9; }
+.danger-btn { color: var(--danger); font-weight: 500; }
+.danger-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+
+.seg { display: inline-flex; background: var(--line-soft); border-radius: var(--radius-s); padding: 2px; }
+.seg button { border: 0; background: transparent; height: 28px; padding: 0 10px; border-radius: 4px; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--sheet); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+/* ── 1. 달력 ─────────────────────────────── */
+.cal {
+  background: var(--sheet);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-sheet);
+  padding: 12px 12px 10px;
+  container-type: inline-size;
+}
+.cal-head { display: flex; align-items: center; gap: 8px; padding: 0 2px 8px 6px; }
+.cal-title { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -.01em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-nav { display: flex; align-items: center; gap: 2px; }
+.cal-nav .seg { margin-left: 6px; }
+
+.weekdays, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekdays div { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0 6px; font-weight: 500; }
+.weekdays .sun { color: var(--sun); }
+.weekdays .sat { color: var(--sat); }
+
+.grid { border-top: 1px solid var(--line-soft); }
+.cell {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  min-height: 58px; padding: 5px 2px 6px;
+  border: 0; border-bottom: 1px solid var(--line-soft); background: transparent;
+  text-align: center; overflow: hidden;
+}
+.cell:hover { background: var(--hover); }
+.cell .num {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 14px; font-weight: 500; line-height: 1;
+}
+.cell.sun .num, .cell.holiday .num { color: var(--sun); }
+.cell.sat:not(.holiday) .num { color: var(--sat); }
+.cell.other { opacity: .38; }
+.cell.today .num { box-shadow: inset 0 0 0 1.5px currentColor; }
+.cell.selected .num { background: var(--ink); color: var(--sheet); box-shadow: none; }
+.cell.selected.sun .num, .cell.selected.holiday .num { background: var(--sun); color: #fff; }
+.cell.selected.sat:not(.holiday) .num { background: var(--sat); color: #fff; }
+.cell .hname {
+  font-size: 10px; line-height: 1.2; color: var(--sun);
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px;
+}
+.cell .dots { display: flex; gap: 3px; height: 6px; align-items: center; margin-top: 2px; }
+.cell .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.cell .dots .more { font-size: 9px; color: var(--muted); line-height: 1; }
+.cell .chips { display: none; }
+
+.grid.week .cell { min-height: 72px; }
+
+/* 넓은 창: 점 대신 일정 제목 */
+@container (min-width: 600px) {
+  .cell { align-items: stretch; text-align: left; min-height: 92px; padding: 4px 4px 6px; }
+  .cell .head { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .cell .num { width: 26px; height: 26px; font-size: 13px; }
+  .cell .hname { padding: 0; }
+  .cell .dots { display: none; }
+  .cell .chips { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; min-width: 0; }
+  .grid.week .cell { min-height: 140px; }
+}
+.cell .head { display: contents; }
+@container (min-width: 600px) { .cell .head { display: flex; } }
+
+.chip {
+  font-size: 11px; line-height: 16px; padding: 0 5px; border-radius: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: relative;
+}
+.chip::before { content: ''; position: absolute; inset: 0; background: var(--chip); opacity: .16; border-radius: inherit; }
+.chip.timed::before { opacity: 0; }
+.chip.timed { padding-left: 9px; }
+.chip.timed::after { content: ''; position: absolute; left: 2px; top: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--chip); }
+.chips .more { font-size: 10px; color: var(--muted); padding-left: 5px; }
+
+/* 색상 클래스 */
+.c-blue { --chip: var(--c-blue); color: var(--c-blue); }
+.c-red { --chip: var(--c-red); color: var(--c-red); }
+.c-green { --chip: var(--c-green); color: var(--c-green); }
+.c-amber { --chip: var(--c-amber); color: var(--c-amber); }
+.c-violet { --chip: var(--c-violet); color: var(--c-violet); }
+.c-teal { --chip: var(--c-teal); color: var(--c-teal); }
+.c-slate { --chip: var(--c-slate); color: var(--c-slate); }
+.chips .chip { color: var(--ink); }
+
+/* ── 2. 일력 페이지 + 일정 목록 ───────────────── */
+.day {
+  background: var(--sheet);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-sheet);
+  position: relative;
+}
+.daypage {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 16px 14px 20px;
+}
+.daypage-num {
+  font-size: 56px; font-weight: 600; line-height: .9; letter-spacing: -.04em;
+  min-width: 1.2em; text-align: center;
+}
+.daypage.sun .daypage-num, .daypage.holiday .daypage-num, .daypage.holiday .daypage-wd { color: var(--sun); }
+.daypage.sat:not(.holiday) .daypage-num { color: var(--sat); }
+.daypage-info { flex: 1; min-width: 0; }
+.daypage-wd { font-size: 17px; font-weight: 600; }
+.daypage.sun .daypage-wd { color: var(--sun); }
+.daypage.sat:not(.holiday) .daypage-wd { color: var(--sat); }
+.daypage-sub { font-size: 12px; color: var(--muted); }
+.daypage-hol { font-size: 12px; color: var(--sun); font-weight: 500; }
+.daypage-hol:empty { display: none; }
+
+.agenda { list-style: none; margin: 0; padding: 0 8px 8px; }
+.agenda .item {
+  display: grid; grid-template-columns: 4px 64px 1fr; gap: 0 12px; align-items: start;
+  width: 100%; border: 0; background: transparent; text-align: left;
+  padding: 10px 10px; border-radius: var(--radius-s);
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink);
+}
+.agenda li:first-child .item { border-top-color: transparent; }
+.agenda .item:hover { background: var(--hover); }
+.agenda .bar { align-self: stretch; border-radius: 2px; background: var(--chip); min-height: 20px; }
+.agenda .when { font-size: 13px; color: var(--ink-2); line-height: 1.35; padding-top: 1px; }
+.agenda .when small { display: block; color: var(--muted); font-size: 12px; }
+.agenda .title { font-weight: 500; overflow-wrap: anywhere; user-select: text; }
+.agenda .meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 1px; }
+.agenda .meta span { display: inline-flex; align-items: center; gap: 3px; }
+.agenda .meta svg { width: 12px; height: 12px; stroke-width: 2; }
+.agenda .item.past .title, .agenda .item.past .when { color: var(--muted); }
+
+.empty {
+  padding: 18px 20px 22px; color: var(--muted); font-size: 13px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+
+/* ── 3. 메모 ─────────────────────────────── */
+.memos {
+  background: var(--sheet);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-sheet);
+  padding: 10px 8px 8px;
+}
+.memos-head { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 6px 12px; }
+.memos-head h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.memo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.memo {
+  position: relative;
+  padding: 10px 40px 10px 12px;
+  border-radius: var(--radius-s);
+  border-top: 1px solid var(--line-soft);
+}
+.memo:first-child { border-top-color: transparent; }
+.memo:hover { background: var(--hover); }
+.memo:focus-within { background: var(--paper); }
+.memo textarea {
+  display: block; width: 100%; border: 0; background: transparent; resize: none;
+  line-height: 1.6; padding: 0; min-height: 1.6em; overflow: hidden; user-select: text;
+}
+.memo textarea:focus { outline: none; }
+.memo textarea::placeholder { color: var(--muted); }
+.memo .del { position: absolute; right: 6px; top: 6px; opacity: 0; }
+.memo:hover .del, .memo:focus-within .del { opacity: 1; }
+.memo .stamp { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.memo-empty { color: var(--muted); font-size: 13px; padding: 8px 12px 12px; }
+
+/* ── 다이얼로그 ─────────────────────────────── */
+dialog.sheet {
+  width: min(460px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  border: 0; padding: 0; border-radius: 12px;
+  background: var(--sheet); color: var(--ink);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, .35);
+  user-select: none;
+}
+dialog.sheet.small { width: min(340px, calc(100vw - 24px)); }
+dialog::backdrop { background: rgba(18, 22, 31, .38); }
+dialog[open] { animation: rise .16s ease-out; }
+@keyframes rise { from { transform: translateY(6px); opacity: 0; } }
+dialog form { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; }
+dialog h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 0 0; }
+.sheet-foot { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.spacer { flex: 1; }
+
+input:not([type="checkbox"]), select, textarea {
+  border: 1px solid var(--line); background: var(--paper); border-radius: var(--radius-s);
+  height: 34px; padding: 0 10px; min-width: 0; user-select: text;
+}
+textarea { height: auto; padding: 8px 10px; resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: -1px; border-color: transparent; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--ink); margin: 0; }
+.title-input { font-size: 17px; height: 42px !important; font-weight: 500; }
+
+.field-row { display: flex; align-items: center; gap: 12px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; }
+.when-grid { display: grid; grid-template-columns: 36px 1fr 140px; gap: 8px; align-items: center; }
+.when-grid .lbl { color: var(--muted); font-size: 13px; }
+.when-grid.all-day { grid-template-columns: 36px 1fr; }
+.when-grid.all-day input[type="time"] { display: none; }
+.form-error { color: var(--danger); font-size: 12px; margin: -4px 0 0; }
+
+fieldset.block { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin-bottom: 6px; }
+.repeat-detail { display: flex; flex-direction: column; gap: 8px; padding-left: 10px; border-left: 2px solid var(--line-soft); }
+.inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.inline input[type="number"] { width: 72px; }
+.weekday-pick { display: flex; gap: 4px; }
+.weekday-pick button {
+  width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line);
+  background: transparent; font-size: 13px;
+}
+.weekday-pick button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips:empty { display: none; }
+.rchip {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 28px; padding: 0 4px 0 10px; border-radius: 14px;
+  background: var(--line-soft); font-size: 13px;
+}
+.rchip button { border: 0; background: transparent; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); padding: 0; }
+.rchip button:hover { background: var(--hover); color: var(--ink); }
+.rchip svg { width: 12px; height: 12px; stroke-width: 2; }
+
+.swatches { display: flex; gap: 8px; }
+.swatches label { position: relative; }
+.swatches input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.swatches span { display: block; width: 24px; height: 24px; border-radius: 50%; background: var(--chip); }
+.swatches input:checked + span { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--chip); }
+.swatches input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 4px; }
+
+.scope-options { display: flex; flex-direction: column; gap: 4px; }
+.scope-options button {
+  height: 40px; border: 0; border-radius: var(--radius-s); background: var(--line-soft);
+  text-align: left; padding: 0 14px; font-weight: 500;
+}
+.scope-options button:hover { background: var(--hover); }
+
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; }
+.setting > span { display: flex; flex-direction: column; }
+.setting small { color: var(--muted); font-size: 12px; }
+.setting select { width: 140px; }
+.hint { color: var(--muted); font-size: 12px; margin: -4px 0 0; }
+.custom-holidays { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.custom-holidays li { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--line-soft); }
+.custom-holidays li .d { color: var(--sun); min-width: 92px; }
+.custom-holidays li .n { flex: 1; }
+#chDate { flex: 1 1 130px; }
+#chName { flex: 1 1 120px; }
+
+/* ── 토스트 ─────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--ink); color: var(--paper);
+  padding: 6px 6px 6px 14px; border-radius: 8px; font-size: 13px;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .4);
+  max-width: calc(100vw - 32px);
+}
+.toast .text-btn { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; height: 28px; }
+.toast .text-btn:hover { background: rgba(255, 255, 255, .12); }
+.toast[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  dialog[open] { animation: none; }
+}
+
+
+/* ── 스크롤바 ──────────────────────────────
+   Windows 기본 스크롤바는 모두 숨기고(자리도 차지하지 않음 → 좌우 여백 대칭),
+   app.js가 내용 위에 얇은 막대를 직접 그린다. 메인 화면·새 일정·설정 창 모두 같은 모양.
+   평소엔 투명, 스크롤 중이거나 오른쪽 가장자리에 마우스를 올리면 나타난다. */
+* { scrollbar-width: none; }
+::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+.sb {
+  position: fixed; z-index: 25;
+  width: 14px; /* 잡기 쉬운 영역 */
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+}
+.sb::before {
+  content: ''; position: absolute; top: 0; bottom: 0; right: 3px;
+  width: 5px; border-radius: 3px;
+  background: var(--ink); opacity: .26;
+  transition: width .15s ease, opacity .15s ease;
+}
+.sb.show { opacity: 1; pointer-events: auto; transition-duration: .12s; }
+.sb.near::before, .sb:hover::before { width: 7px; opacity: .4; }
+.sb.dragging::before { width: 7px; opacity: .55; }
+.sb.dragging { transition: none; }
+
+@media (prefers-reduced-motion: reduce) { .sb, .sb::before { transition: none; } }
+
+/* ── 좁은 창 (기본 크기 350px) ───────────────── */
+@media (max-width: 420px) {
+  .page { padding: 10px 10px 24px; gap: 10px; }
+  .cal { padding: 8px 6px 6px; }
+  .cal-head { gap: 4px; padding: 0 0 6px 6px; }
+  .cal-title { font-size: 16px; }
+  .cal-nav { gap: 0; }
+  .cal-nav .seg { margin-left: 2px; }
+  .seg button { padding: 0 8px; }
+  .icon-btn { width: 28px; }
+  .text-btn { padding: 0 6px; }
+  .weekdays div { font-size: 11px; padding: 2px 0 4px; }
+  .cell { min-height: 48px; padding: 4px 1px 4px; }
+  .cell .num { width: 26px; height: 26px; font-size: 13px; }
+  .cell .hname { font-size: 9px; }
+  .grid.week .cell { min-height: 60px; }
+
+  .daypage { gap: 10px; padding: 14px 10px 10px 12px; }
+  .daypage-num { font-size: 44px; }
+  .daypage-wd { font-size: 15px; }
+  #addEventBtn { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 50%; }
+  #addEventBtn svg { width: 18px; height: 18px; }
+  #addEventBtn .btn-label { display: none; }
+  .agenda { padding: 0 4px 4px; }
+  .agenda .item { grid-template-columns: 4px 52px 1fr; gap: 0 10px; padding: 8px 8px; }
+  .agenda .when { font-size: 12px; }
+
+  .memos { padding: 8px 4px 4px; }
+  .memos-head { padding: 0 0 4px 10px; }
+  .memo { padding: 8px 36px 8px 10px; }
+
+  dialog.sheet { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+  dialog form { padding: 14px 14px 12px; gap: 10px; }
+  /* 날짜·시간 칸이 잘리지 않게 '시작/종료' 글자를 위로 올린다 */
+  .when-grid { grid-template-columns: 1fr 1fr; gap: 4px 6px; }
+  .when-grid .lbl { grid-column: 1 / -1; font-size: 12px; }
+  .when-grid.all-day { grid-template-columns: 1fr; }
+  input:not([type="checkbox"]), select { padding: 0 8px; }
+  .weekday-pick { gap: 2px; }
+  .weekday-pick button { width: 30px; height: 30px; }
+  .swatches { gap: 6px; }
+  .setting select { width: 112px; }
+  .toast { bottom: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .titlebar, body.tb-show .titlebar { transition: none; } }
+
+/* ── 위아래 가장자리 흐림 ─────────────────────
+   스크롤해서 내용이 창 위/아래로 잘려 나갈 때, 그 경계를 흐리게 번지며 사라지게 한다.
+   잘려 나가는 내용이 있는 쪽에만 나타난다(.on). */
+.edge-blur {
+  position: fixed; left: 0; right: 0; z-index: 8;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+.edge-blur.top {
+  top: 0; height: 26px;
+  background: linear-gradient(to bottom, var(--paper) 0%, color-mix(in srgb, var(--paper) 55%, transparent) 45%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent);
+  mask-image: linear-gradient(to bottom, #000 35%, transparent);
+}
+.edge-blur.bottom {
+  bottom: 0; height: 32px;
+  background: linear-gradient(to top, var(--paper) 0%, color-mix(in srgb, var(--paper) 55%, transparent) 45%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, #000 35%, transparent);
+  mask-image: linear-gradient(to top, #000 35%, transparent);
+}
+.edge-blur.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .edge-blur { transition: none; } }
