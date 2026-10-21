@@ -64,6 +64,7 @@ class Notifier {
     this.getEvents = getEvents;
     this.notify = notify;
     this.intervalMs = intervalMs;
+    this.graceMs = graceMs;
     this.fired = new Map(); // key -> fireAt
     // 앱이 꺼져 있던 동안 지나간 알림은 최근 graceMs 이내의 것만 울린다
     this.last = toFloating(new Date()) - graceMs;
@@ -86,9 +87,11 @@ class Notifier {
       this.last = nowMs;
       return [];
     }
+    // 절전·최대 절전에서 깨어나 확인 간격이 크게 벌어졌으면, 앱을 새로 켤 때처럼 최근 graceMs 이내의 것만 울린다
+    const from = Math.max(this.last, nowMs - this.graceMs);
     let due = [];
     try {
-      due = dueReminders(this.getEvents(), this.last, nowMs).filter((d) => !this.fired.has(d.key));
+      due = dueReminders(this.getEvents(), from, nowMs).filter((d) => !this.fired.has(d.key));
     } catch (err) {
       console.error('알림 확인 실패', err);
     }

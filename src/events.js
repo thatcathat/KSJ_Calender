@@ -149,20 +149,42 @@ function deleteEvent(data, id, { scope = 'all', occurrenceStart } = {}) {
   series.updatedAt = nowIso();
 }
 
+/**
+ * 삭제 되돌리기: 삭제 전에 받아 둔 일정을 id·제외일·분할 정보까지 그대로 되살린다.
+ * 반복 일정의 '이 일정만/이후 모두' 삭제는 원래 일정을 고치는 것이라, 같은 id가 있으면 그 자리를 덮어쓴다.
+ */
+function restoreEvent(data, snapshot) {
+  if (!snapshot || typeof snapshot.id !== 'string' || !/^[\w-]{8,64}$/.test(snapshot.id)) throw new Error('되살릴 일정 정보가 올바르지 않아요.');
+  const ev = {
+    id: snapshot.id,
+    ...cleanFields(snapshot),
+    exdates: Array.isArray(snapshot.exdates) ? snapshot.exdates.filter((x) => typeof x === 'string') : [],
+    ...(typeof snapshot.seriesId === 'string' ? { seriesId: snapshot.seriesId } : {}),
+    createdAt: typeof snapshot.createdAt === 'string' ? snapshot.createdAt : nowIso(),
+    updatedAt: nowIso(),
+  };
+  const i = data.events.findIndex((e) => e.id === ev.id);
+  if (i >= 0) data.events[i] = ev;
+  else data.events.push(ev);
+  return ev;
+}
+
 // ── 메모 ─────────────────────────────────────────
 // id가 있으면 수정, 없거나 못 찾으면 새로 만든다(되돌리기 시 원래 id·위치로 복원).
-function saveMemo(data, { id, text, index }) {
+// done(완료 체크)은 넘겨줄 때만 바꾼다.
+function saveMemo(data, { id, text, index, done }) {
   const body = String(text ?? '').slice(0, 20000);
   if (id) {
     const m = data.memos.find((x) => x.id === id);
     if (m) {
       m.text = body;
+      if (typeof done === 'boolean') m.done = done;
       m.updatedAt = nowIso();
       return m;
     }
   }
   const validId = typeof id === 'string' && /^[\w-]{8,64}$/.test(id) ? id : newId();
-  const m = { id: validId, text: body, createdAt: nowIso(), updatedAt: nowIso() };
+  const m = { id: validId, text: body, done: done === true, createdAt: nowIso(), updatedAt: nowIso() };
   const at = Number.isInteger(index) ? Math.min(Math.max(index, 0), data.memos.length) : 0;
   data.memos.splice(at, 0, m);
   return m;
@@ -172,4 +194,15 @@ function deleteMemo(data, id) {
   data.memos = data.memos.filter((m) => m.id !== id);
 }
 
-module.exports = { createEvent, updateEvent, deleteEvent, saveMemo, deleteMemo, cleanFields, COLORS };
+// 메모 순서 바꾸기: ids 순서대로. ids에 없는 메모는 원래 순서대로 뒤에 둔다.
+function reorderMemos(data, ids) {
+  const pos = new Map((Array.isArray(ids) ? ids : []).map((id, i) => [id, i]));
+  const rank = (m) => (pos.has(m.id) ? pos.get(m.id) : Infinity);
+  data.memos = data.memos
+    .map((m, i) => [m, i])
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1])
+    .map(([m]) => m);
+  return data.memos;
+}
+
+module.exports = { createEvent, updateEvent, deleteEvent, restoreEvent, saveMemo, deleteMemo, reorderMemos, cleanFields, COLORS };

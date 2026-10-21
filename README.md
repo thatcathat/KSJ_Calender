@@ -9,7 +9,9 @@ Windows용 데스크톱 캘린더. 위에서부터 **달력 → 선택한 날짜
 - 알림: 일정마다 여러 개 (정시~1주 전, 종일 일정은 오전 9시 기준). 창을 닫아도 트레이에서 계속 실행
 - 한국 공휴일 자동 계산: 설·추석·부처님 오신 날(음력), 대체공휴일 규칙, 2026년부터 공휴일인 노동절·제헌절 포함
   - 선거일·임시공휴일은 설정 → '직접 추가한 공휴일'에 넣으면 됩니다
+- 일정 검색: 제목·장소로 찾고, 결과를 누르면 그 날짜로 이동 (반복 일정은 다음 날짜로 표시)
 - 메모: 날짜와 상관없는 메모 여러 개, 입력 즉시 자동 저장, 삭제 후 되돌리기
+  - 오른쪽 동그라미(또는 Alt+Enter)로 완료 표시, 왼쪽 손잡이를 끌거나 Alt+↑↓로 순서 바꾸기
 - 음력 날짜 표시, 다크 모드(시스템 설정 따름)
 
 ## 실행 (개발용)
@@ -60,12 +62,16 @@ git push --follow-tags  # 커밋과 태그를 함께 push → 빌드 시작
 | Page Up / Page Down | 이전 / 다음 달(주) |
 | T | 오늘로 |
 | N | 새 일정 |
+| Ctrl+F | 일정 검색 (Enter: 첫 결과로 이동, ↑↓: 결과 사이 이동) |
 | Enter / 날짜 더블클릭 | 그 날짜에 일정 추가 |
 
 ## 데이터
 
 `%APPDATA%\DeskCalendar\calendar-data.json` 에 저장됩니다(설정 → '데이터 폴더 열기').
+`npm start`로 띄운 개발 모드는 `%APPDATA%\DeskCalendar-dev`를 따로 써서, 설치된 앱과 동시에 띄워도 실제 일정에 영향이 없습니다.
 저장할 때마다 직전 상태를 `calendar-data.json.bak`으로 남기고, 파일이 깨지면 자동으로 백업에서 복구합니다.
+하루에 한 번은 `backups\calendar-data-YYYY-MM-DD.json`으로 그날 처음 저장하기 직전 상태를 남기고, 최근 7일치를 보관합니다.
+실수로 지운 일정은 이 파일을 `calendar-data.json`으로 바꿔 넣으면(앱을 끈 상태에서) 되살릴 수 있습니다.
 
 ## 구조
 
@@ -78,8 +84,10 @@ src/updater.js     자동 업데이트(electron-updater, GitHub Releases)
 src/recurrence.js  반복 일정 전개(rrule)
 src/events.js      일정·메모 추가/수정/삭제 로직
 src/notifier.js    알림 스케줄러
+src/search.js      일정 검색
 src/store.js       JSON 저장소
-renderer/          화면 (HTML/CSS/JS, 글꼴: IBM Plex Sans KR)
+renderer/          화면 (HTML/CSS, 글꼴: IBM Plex Sans KR)
+renderer/js/       화면 스크립트 — 기능별 파일, index.html의 <script> 순서대로 전역을 함께 씀
 test/              단위 테스트 — npm test
 ```
 

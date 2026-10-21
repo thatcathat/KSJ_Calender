@@ -29,6 +29,15 @@
   --radius-s: 6px;
   --radius-m: 10px;
   --shadow-sheet: 0 1px 0 rgba(27, 35, 51, .04), 0 12px 32px -12px rgba(27, 35, 51, .18);
+
+  /* 여백은 4·8·12·16px 네 단계만 쓴다.
+     카드 안의 글자와 버튼은 모두 카드 끝에서 --card-px 떨어진 세로선에 맞춰 선다. */
+  --card-px: 16px;   /* 카드 좌우 여백 = 글자·버튼 기준선 */
+  --card-py: 16px;   /* 카드 위 여백 (제목까지) */
+  --card-gap: 16px;  /* 카드 사이, 창 가장자리 */
+  --row-inset: 4px;  /* 목록 줄의 호버 배경이 카드 끝에서 떨어진 거리 */
+  --row-px: calc(var(--card-px) - var(--row-inset)); /* 줄 안쪽 여백: 줄 글자도 기준선에 오게 */
+  --title-size: 17px; /* 카드 제목 ("2026년 10월", "메모") */
   color-scheme: light;
 }
 
@@ -123,15 +132,15 @@ body.maximized .win-btn .ic-restore { display: block; }
 
 /* 달력 머리 줄도 창을 끄는 손잡이로 (버튼은 제외) */
 .cal-head { -webkit-app-region: drag; }
-.cal-head button, .cal-head .seg { -webkit-app-region: no-drag; }
+.cal-head button { -webkit-app-region: no-drag; }
 
 .page {
   max-width: 760px;
   margin: 0 auto;
-  padding: 16px 16px 40px;
+  padding: var(--card-gap) var(--card-gap) 40px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--card-gap);
 }
 
 /* ── 공통 버튼 ─────────────────────────────── */
@@ -160,13 +169,37 @@ body.maximized .win-btn .ic-restore { display: block; }
   background: var(--sheet);
   border-radius: var(--radius-m);
   box-shadow: var(--shadow-sheet);
-  padding: 12px 12px 10px;
+  padding: var(--card-py) var(--card-px) 8px;
   container-type: inline-size;
 }
-.cal-head { display: flex; align-items: center; gap: 8px; padding: 0 2px 8px 6px; }
-.cal-title { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -.01em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cal-nav { display: flex; align-items: center; gap: 2px; }
-.cal-nav .seg { margin-left: 6px; }
+.cal-head { display: flex; align-items: center; gap: 8px; padding: 0 0 8px; }
+.cal-titlebox { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.cal-title { font-size: var(--title-size); font-weight: 600; margin: 0; letter-spacing: -.01em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-chip {
+  flex: none; height: 24px; padding: 0 8px; border: 1px solid var(--line); border-radius: 12px;
+  background: transparent; color: var(--ink-2); font-size: 12px; font-weight: 500;
+}
+.today-chip:hover { background: var(--hover); }
+.cal-nav { display: flex; align-items: center; }
+.icon-btn svg.dots { stroke-width: 2.6; }
+
+/* ⋯ 메뉴: 버튼 바로 아래, 오른쪽 끝을 버튼에 맞춰 뜬다 */
+#moreBtn { anchor-name: --more-btn; }
+.menu {
+  position: fixed; position-anchor: --more-btn; inset: auto; top: anchor(bottom); right: anchor(right);
+  margin: 4px 0 0; min-width: 148px; padding: 4px;
+  border: 1px solid var(--line); border-radius: var(--radius-m);
+  background: var(--sheet); color: var(--ink); box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .3);
+}
+.menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px;
+  border: 0; border-radius: var(--radius-s); background: transparent; text-align: left;
+}
+.menu button:hover, .menu button:focus-visible { background: var(--hover); outline: none; }
+.menu button svg { width: 16px; height: 16px; color: var(--ink-2); }
+.menu .check { visibility: hidden; }
+.menu [aria-checked="true"] .check { visibility: visible; }
+.menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px; }
 
 .weekdays, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .weekdays div { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0 6px; font-weight: 500; }
@@ -246,8 +279,8 @@ body.maximized .win-btn .ic-restore { display: block; }
   box-shadow: var(--shadow-sheet);
 }
 .daypage {
-  display: flex; align-items: center; gap: 14px;
-  padding: 18px 16px 14px 20px;
+  display: flex; align-items: center; gap: 12px;
+  padding: var(--card-py) var(--card-px) 12px;
 }
 .daypage-num {
   font-size: 56px; font-weight: 600; line-height: .9; letter-spacing: -.04em;
@@ -263,11 +296,11 @@ body.maximized .win-btn .ic-restore { display: block; }
 .daypage-hol { font-size: 12px; color: var(--sun); font-weight: 500; }
 .daypage-hol:empty { display: none; }
 
-.agenda { list-style: none; margin: 0; padding: 0 8px 8px; }
+.agenda { list-style: none; margin: 0; padding: 0 var(--row-inset) 8px; }
 .agenda .item {
   display: grid; grid-template-columns: 4px 64px 1fr; gap: 0 12px; align-items: start;
   width: 100%; border: 0; background: transparent; text-align: left;
-  padding: 10px 10px; border-radius: var(--radius-s);
+  padding: 8px var(--row-px); border-radius: var(--radius-s);
   border-top: 1px solid var(--line-soft);
   color: var(--ink);
 }
@@ -283,26 +316,59 @@ body.maximized .win-btn .ic-restore { display: block; }
 .agenda .item.past .title, .agenda .item.past .when { color: var(--muted); }
 
 .empty {
-  padding: 18px 20px 22px; color: var(--muted); font-size: 13px;
+  padding: 8px var(--row-px) 12px; color: var(--muted); font-size: 13px;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
+
+/* 검색 결과는 일정 목록과 같은 모양 */
+.search-results { padding: 0; margin: -4px calc(-1 * var(--row-px)) 0; }
+.search-results:empty { display: none; }
+.search-results .when { white-space: nowrap; }
+#searchStatus:empty { display: none; }
 
 /* ── 3. 메모 ─────────────────────────────── */
 .memos {
   background: var(--sheet);
   border-radius: var(--radius-m);
   box-shadow: var(--shadow-sheet);
-  padding: 10px 8px 8px;
+  padding: var(--card-py) 0 8px;
 }
-.memos-head { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 6px 12px; }
-.memos-head h2 { font-size: 15px; font-weight: 600; margin: 0; }
-.memo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.memos-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--card-px) 8px; }
+.memos-head h2 { font-size: var(--title-size); font-weight: 600; margin: 0; }
+.memo-list { list-style: none; margin: 0; padding: 0 var(--row-inset); display: flex; flex-direction: column; }
 .memo {
   position: relative;
-  padding: 10px 40px 10px 12px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 28px 18px; gap: 0 8px; align-items: start; /* 글 | 삭제 | 완료 */
+  padding: 8px var(--row-px);
   border-radius: var(--radius-s);
   border-top: 1px solid var(--line-soft);
 }
+/* 손잡이: 메모 왼쪽 여백(글자 기준선 바깥)을 위아래로 가득 채우는 띠. 마우스를 올렸을 때만 보인다 */
+.memo .grip {
+  position: absolute; left: 0; top: 0; bottom: 0; width: var(--row-px);
+  display: grid; place-items: center;
+  border-radius: var(--radius-s) 0 0 var(--radius-s);
+  color: var(--muted); cursor: grab; touch-action: none; opacity: 0;
+  transition: opacity .12s ease, background-color .12s ease;
+}
+.memo .grip svg { width: 14px; height: 14px; stroke-width: 2.6; }
+.memo:hover .grip, .memo.lifted .grip { opacity: 1; }
+.memo .grip:hover, .memo.lifted .grip { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink-2); }
+/* 완료 체크(모양은 아래 공통 체크박스). 평소엔 완료한 메모에만 보이고, 마우스를 올리거나 메모를 쓰는 중에 나타난다 */
+.memo input[type="checkbox"] { align-self: center; opacity: 0; } /* 메모 높이 가운데 */
+.memo:hover input[type="checkbox"], .memo:focus-within input[type="checkbox"], .memo input[type="checkbox"]:checked { opacity: 1; }
+.memo.done textarea { text-decoration: line-through; color: var(--muted); }
+/* 끄는 중인 메모는 떠올라 마우스를 따라온다 (위치는 memos.js가 transform으로) */
+.memo-list .memo.lifted { /* hover·포커스 배경보다 우선 */
+  z-index: 2; background: var(--sheet); border-top-color: transparent;
+  box-shadow: 0 14px 28px -10px rgba(0, 0, 0, .35), 0 0 0 1px var(--line-soft);
+  scale: 1.02;
+}
+.memo { transition: scale .16s ease, box-shadow .16s ease, background-color .16s ease; }
+body.memo-dragging, body.memo-dragging * { cursor: grabbing !important; user-select: none; }
+body.memo-dragging .memo:not(.lifted):hover { background: transparent; }
+body.memo-dragging .memo:not(.lifted) .grip,
+body.memo-dragging .memo:not(.lifted) input[type="checkbox"]:not(:checked) { opacity: 0; }
 .memo:first-child { border-top-color: transparent; }
 .memo:hover { background: var(--hover); }
 .memo:focus-within { background: var(--paper); }
@@ -312,10 +378,10 @@ body.maximized .win-btn .ic-restore { display: block; }
 }
 .memo textarea:focus { outline: none; }
 .memo textarea::placeholder { color: var(--muted); }
-.memo .del { position: absolute; right: 6px; top: 6px; opacity: 0; }
+.memo .del { width: 28px; height: 28px; align-self: center; opacity: 0; }
 .memo:hover .del, .memo:focus-within .del { opacity: 1; }
 .memo .stamp { font-size: 11px; color: var(--muted); margin-top: 4px; }
-.memo-empty { color: var(--muted); font-size: 13px; padding: 8px 12px 12px; }
+.memo-empty { color: var(--muted); font-size: 13px; padding: 8px var(--row-px) 12px; }
 
 /* ── 다이얼로그 ─────────────────────────────── */
 dialog.sheet {
@@ -342,7 +408,21 @@ input:not([type="checkbox"]), select, textarea {
 }
 textarea { height: auto; padding: 8px 10px; resize: vertical; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: -1px; border-color: transparent; }
-input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--ink); margin: 0; }
+/* 체크박스: 테두리만 있는 원 → 체크하면 진하게 채우고 체크 표시(달력의 선택된 날짜 원과 같은 모양). 앱 전체 공통 */
+input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; flex: none;
+  position: relative; width: 18px; height: 18px; margin: 0;
+  border: 1.5px solid var(--muted); border-radius: 50%; background: transparent;
+  cursor: pointer; transition: opacity .12s ease, background-color .15s ease, border-color .15s ease;
+}
+input[type="checkbox"]:hover { border-color: var(--ink-2); }
+input[type="checkbox"]:checked { background: var(--ink); border-color: var(--ink); }
+input[type="checkbox"]::after {
+  content: ''; position: absolute; left: 5px; top: 1.5px; width: 4px; height: 8px;
+  border: solid var(--sheet); border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0); transition: transform .15s ease;
+}
+input[type="checkbox"]:checked::after { transform: rotate(45deg) scale(1); }
 .title-input { font-size: 17px; height: 42px !important; font-weight: 500; }
 
 .field-row { display: flex; align-items: center; gap: 12px; }
@@ -422,7 +502,7 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
 
 /* ── 스크롤바 ──────────────────────────────
    Windows 기본 스크롤바는 모두 숨기고(자리도 차지하지 않음 → 좌우 여백 대칭),
-   app.js가 내용 위에 얇은 막대를 직접 그린다. 메인 화면·새 일정·설정 창 모두 같은 모양.
+   js/window-chrome.js가 내용 위에 얇은 막대를 직접 그린다. 메인 화면·새 일정·설정 창 모두 같은 모양.
    평소엔 투명, 스크롤 중이거나 오른쪽 가장자리에 마우스를 올리면 나타난다. */
 * { scrollbar-width: none; }
 ::-webkit-scrollbar { display: none; width: 0; height: 0; }
@@ -448,12 +528,9 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
 
 /* ── 좁은 창 (기본 크기 350px) ───────────────── */
 @media (max-width: 420px) {
-  .page { padding: 10px 10px 24px; gap: 10px; }
-  .cal { padding: 8px 6px 6px; }
-  .cal-head { gap: 4px; padding: 0 0 6px 6px; }
-  .cal-title { font-size: 16px; }
-  .cal-nav { gap: 0; }
-  .cal-nav .seg { margin-left: 2px; }
+  :root { --card-py: 12px; --card-gap: 12px; --title-size: 16px; }
+  .page { padding-bottom: 24px; }
+  .cal-head { gap: 4px; }
   .seg button { padding: 0 8px; }
   .icon-btn { width: 28px; }
   .text-btn { padding: 0 6px; }
@@ -463,19 +540,14 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
   .cell .hname { font-size: 9px; }
   .grid.week .cell { min-height: 60px; }
 
-  .daypage { gap: 10px; padding: 14px 10px 10px 12px; }
   .daypage-num { font-size: 44px; }
   .daypage-wd { font-size: 15px; }
   #addEventBtn { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 50%; }
   #addEventBtn svg { width: 18px; height: 18px; }
   #addEventBtn .btn-label { display: none; }
-  .agenda { padding: 0 4px 4px; }
-  .agenda .item { grid-template-columns: 4px 52px 1fr; gap: 0 10px; padding: 8px 8px; }
+  .agenda .item { grid-template-columns: 4px 52px 1fr; gap: 0 8px; }
   .agenda .when { font-size: 12px; }
 
-  .memos { padding: 8px 4px 4px; }
-  .memos-head { padding: 0 0 4px 10px; }
-  .memo { padding: 8px 36px 8px 10px; }
 
   dialog.sheet { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
   dialog form { padding: 14px 14px 12px; gap: 10px; }
@@ -492,6 +564,7 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
 }
 
 @media (prefers-reduced-motion: reduce) { .titlebar, body.tb-show .titlebar { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .memo, .memo .grip, input[type="checkbox"], input[type="checkbox"]::after { transition: none; } }
 
 /* ── 위아래 가장자리 흐림 ─────────────────────
    스크롤해서 내용이 창 위/아래로 잘려 나갈 때, 그 경계를 흐리게 번지며 사라지게 한다.

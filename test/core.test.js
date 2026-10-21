@@ -7,8 +7,8 @@ const path = require('path');
 
 const { holidaysForYear } = require('../src/holidays');
 const { expandEvent, expandAll, describe } = require('../src/recurrence');
-const { createEvent, updateEvent, deleteEvent, saveMemo, deleteMemo } = require('../src/events');
-const { dueReminders } = require('../src/notifier');
+const { createEvent, updateEvent, deleteEvent, restoreEvent, saveMemo, deleteMemo, reorderMemos } = require('../src/events');
+const { dueReminders, Notifier } = require('../src/notifier');
 const { Store } = require('../src/store');
 const { parse } = require('../src/dates');
 
@@ -136,6 +136,19 @@ test('삭제 범위: 이 일정만 / 이후 모두 / 전체', () => {
   assert.equal(data.events.length, 0);
 });
 
+test('반복 일정 삭제 되돌리기: 이 일정만 / 이후 모두 / 전체 모두 원래대로', () => {
+  for (const scope of ['this', 'future', 'all']) {
+    const { data, ev } = seriesData();
+    const snapshot = JSON.parse(JSON.stringify(ev));
+    const before = expandAll(data.events, '2026-10-01', '2026-12-01').map((o) => o.start);
+    deleteEvent(data, ev.id, { scope, occurrenceStart: '2026-10-19T07:00' });
+    restoreEvent(data, snapshot);
+    assert.equal(data.events.length, 1, scope);
+    assert.equal(data.events[0].id, ev.id, scope);
+    assert.deepEqual(expandAll(data.events, '2026-10-01', '2026-12-01').map((o) => o.start), before, scope);
+  }
+});
+
 test('입력 정리: 종료가 시작보다 앞이면 기본 길이로', () => {
   const data = { events: [], memos: [] };
   const a = createEvent(data, { title: '  ', start: '2026-10-21T10:00', end: '2026-10-21T09:00', color: 'pink' });
@@ -165,6 +178,18 @@ test('알림: 반복 일정의 각 발생마다 울림', () => {
   assert.deepEqual(dueReminders(evs, parse('2026-10-21T08:54'), parse('2026-10-21T08:55')).map((d) => d.key), ['r::2026-10-21T09:00@5']);
 });
 
+test('알림: 절전에서 깨어나면 지난 알림은 최근 5분 이내 것만 울림', () => {
+  const evs = [
+    { ...base, id: 'a', start: '2026-10-21T01:10', end: '2026-10-21T02:00', reminders: [10] },
+    { ...base, id: 'b', start: '2026-10-21T07:58', end: '2026-10-21T08:30', reminders: [0] },
+  ];
+  const fired = [];
+  const n = new Notifier(() => evs, (x) => fired.push(x.occ.eventId));
+  n.last = parse('2026-10-20T23:00'); // 잠들기 전 마지막 확인
+  n.tick(new Date(2026, 9, 21, 8, 0)); // 다음 날 아침 8시에 깨어남
+  assert.deepEqual(fired, ['b']);
+});
+
 // ── 메모·저장소 ─────────────────────────────────
 test('메모 추가·수정·삭제와 파일 저장/복구', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cal-'));
@@ -181,4 +206,61 @@ test('메모 추가·수정·삭제와 파일 저장/복구', () => {
   const s3 = new Store(dir);
   assert.equal(s3.data.events.length, 1);
   assert.ok(fs.readdirSync(dir).some((f) => f.includes('.broken-')));
+});
+
+test('날짜별 백업: 하루 한 장, 최근 7일치만 남기고, 본 파일·.bak이 깨지면 여기서 복구', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cal-'));
+  const s = new Store(dir);
+  const bdir = path.join(dir, 'backups');
+  s.mutate((d) => createEvent(d, { title: '회의', start: '2026-10-21T10:00' }));
+  assert.ok(!fs.existsSync(bdir), '첫 저장은 이전 파일이 없어 백업하지 않음');
+  s.mutate((d) => saveMemo(d, { text: '메모' }));
+  s.mutate((d) => saveMemo(d, { text: '메모2' }));
+  assert.equal(fs.readdirSync(bdir).length, 1, '같은 날은 한 장만');
+  assert.equal(JSON.parse(fs.readFileSync(s.dailyBackups()[0], 'utf8')).memos.length, 0, '그날 첫 저장 직전 상태');
+
+  // 예전 백업 9장이 있으면, 오늘 것을 포함해 최신 7장만 남는다
+  for (const f of fs.readdirSync(bdir)) fs.unlinkSync(path.join(bdir, f));
+  for (let i = 1; i <= 9; i++) fs.writeFileSync(path.join(bdir, `calendar-data-2020-01-0${i}.json`), '{}');
+  s.save();
+  const names = fs.readdirSync(bdir).sort();
+  assert.equal(names.length, 7);
+  assert.equal(names[0], 'calendar-data-2020-01-04.json');
+
+  fs.writeFileSync(path.join(dir, 'calendar-data.json'), '{깨진 파일');
+  fs.writeFileSync(path.join(dir, 'calendar-data.json.bak'), '{깨진 백업');
+  assert.equal(new Store(dir).data.events[0].title, '회의');
+});
+
+// ── 검색 ────────────────────────────────────────
+test('검색: 제목·장소, 낱말 모두 포함, 다가오는 것 먼저·지난 것은 최근 순, 반복은 다음 발생 하나', () => {
+  const { searchEvents } = require('../src/search');
+  const evs = [
+    { ...base, id: 'past', title: '치과 정기검진', location: '강남', start: '2026-03-02T10:00', end: '2026-03-02T11:00' },
+    { ...base, id: 'old', title: '치과', start: '2025-01-05', end: '2025-01-06' },
+    { ...base, id: 'soon', title: '팀 회의', location: '3층 회의실', start: '2026-10-25T14:00', end: '2026-10-25T15:00' },
+    { ...base, id: 'weekly', title: '주간 회의', start: '2026-09-07T09:00', end: '2026-09-07T10:00', recurrence: { freq: 'weekly' } },
+    { ...base, id: 'ended', title: '스터디 회의', start: '2026-01-05T19:00', end: '2026-01-05T20:00', recurrence: { freq: 'weekly', count: 3 } },
+    { ...base, id: 'multi', title: '출장', location: '부산', start: '2026-10-20', end: '2026-10-23' },
+  ];
+  const ids = (q) => searchEvents(evs, q, '2026-10-21').items.map((o) => `${o.eventId}@${o.start.slice(0, 10)}`);
+  assert.deepEqual(ids('치과'), ['past@2026-03-02', 'old@2025-01-05']);
+  assert.deepEqual(ids('회의'), ['soon@2026-10-25', 'weekly@2026-10-26', 'ended@2026-01-19']);
+  assert.deepEqual(ids('회의실'), ['soon@2026-10-25'], '장소로도 찾음');
+  assert.deepEqual(ids('치과 강남'), ['past@2026-03-02'], '낱말이 모두 들어 있어야 함');
+  assert.deepEqual(ids('부산'), ['multi@2026-10-20'], '진행 중인 여러 날 일정은 다가오는 쪽');
+  assert.deepEqual(ids('   '), []);
+});
+
+test('메모 완료 체크와 순서 바꾸기', () => {
+  const data = { events: [], memos: [] };
+  const a = saveMemo(data, { text: 'a' });
+  const b = saveMemo(data, { text: 'b' });
+  const c = saveMemo(data, { text: 'c' }); // 새 메모는 맨 위: c, b, a
+  assert.equal(a.done, false);
+  saveMemo(data, { id: b.id, text: 'b', done: true });
+  saveMemo(data, { id: b.id, text: 'b 고침' });
+  assert.equal(data.memos.find((m) => m.id === b.id).done, true, 'done을 안 넘기면 그대로');
+  reorderMemos(data, [a.id, c.id]);
+  assert.deepEqual(data.memos.map((m) => m.text), ['a', 'c', 'b 고침'], '목록에 없는 메모는 뒤로');
 });

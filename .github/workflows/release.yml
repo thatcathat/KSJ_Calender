@@ -33,7 +33,18 @@ jobs:
             exit 1
           fi
 
-      - name: 빌드하고 Release에 올리기
-        run: npx electron-builder --win nsis portable --publish always
+      # 빌드 중에는 올리지 않는다. 설치형·포터블이 동시에 올리면 Release가 두 개 생기기 때문.
+      - name: 빌드
+        run: npx electron-builder --win nsis portable --publish never
+
+      - name: Release에 한 번에 올리기
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" --title "$ver" --generate-notes \
+            "dist/DeskCalendar-Setup-$ver.exe" \
+            "dist/DeskCalendar-Setup-$ver.exe.blockmap" \
+            "dist/DeskCalendar-portable-$ver.exe" \
+            dist/latest.yml

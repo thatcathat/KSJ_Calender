@@ -14,15 +14,18 @@ contextBridge.exposeInMainWorld('api', {
   range: (start, end) => call('range', start, end),
   holidays: (fromYear, toYear) => call('holidays', fromYear, toYear),
   lunar: (date) => call('lunar', date),
+  search: (query) => call('search', query),
 
   getEvent: (id) => call('event:get', id),
   createEvent: (input) => call('event:create', input),
   updateEvent: (id, opts) => call('event:update', id, opts),
   deleteEvent: (id, opts) => call('event:delete', id, opts),
+  restoreEvent: (snapshot) => call('event:restore', snapshot),
 
   listMemos: () => call('memo:list'),
   saveMemo: (memo) => call('memo:save', memo),
   deleteMemo: (id) => call('memo:delete', id),
+  reorderMemos: (ids) => call('memo:reorder', ids),
 
   getSettings: () => call('settings:get'),
   setSettings: (patch) => call('settings:set', patch),

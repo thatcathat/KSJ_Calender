@@ -6,6 +6,7 @@ const KoreanLunarCalendar = require('korean-lunar-calendar');
 const { Store } = require('./src/store');
 const { holidayMap } = require('./src/holidays');
 const { expandAll } = require('./src/recurrence');
+const { searchEvents } = require('./src/search');
 const events = require('./src/events');
 const { Notifier } = require('./src/notifier');
 const { createUpdater } = require('./src/updater');
@@ -19,6 +20,11 @@ let store = null;
 let notifier = null;
 let updater = null;
 let quitting = false;
+
+// 소스로 실행(npm start)할 때는 데이터 폴더를 따로 써서, 설치된 앱의 일정을 건드리지 않고 나란히 띄울 수 있게 한다.
+// 아래 '하나만 실행' 잠금도 이 폴더 기준이라 함께 분리된다.
+const DEV = !app.isPackaged;
+if (DEV) app.setPath('userData', app.getPath('userData') + '-dev');
 
 // 하나만 실행
 if (!app.requestSingleInstanceLock()) {
@@ -103,11 +109,10 @@ function createWindow() {
       e.preventDefault();
       win.hide();
       if (!store.data.settings.trayHintShown && Notification.isSupported()) {
-        new Notification({
+        showNotification({
           title: '데스크 캘린더가 트레이에서 실행 중이에요',
           body: '알림을 계속 받을 수 있어요. 완전히 끄려면 트레이 아이콘에서 "종료"를 누르세요.',
-          icon: asset('icon.png'),
-        }).show();
+        });
         store.mutate((d) => { d.settings.trayHintShown = true; });
       }
     }
@@ -167,7 +172,7 @@ function trayMenu() {
 
 function createTray() {
   tray = new Tray(iconImage(16));
-  tray.setToolTip('데스크 캘린더');
+  tray.setToolTip(DEV ? '데스크 캘린더 (개발)' : '데스크 캘린더');
   tray.setContextMenu(trayMenu());
   tray.on('click', () => showWindow());
 }
@@ -196,11 +201,30 @@ function ensureStartMenuShortcut() {
   }
 }
 
-function notify({ title, body, date }) {
+// 알림 객체를 참조하지 않으면 가비지 컬렉션으로 사라져 클릭 이벤트가 오지 않는다.
+// 알림 센터에 남은 알림을 나중에 눌러도 동작하도록 클릭될 때까지(최대 하루) 붙잡아 둔다.
+const liveNotifications = new Set();
+const NOTIFICATION_KEEP = 24 * 3600 * 1000;
+
+function showNotification(opts, onClick) {
   if (!Notification.isSupported()) return;
-  const n = new Notification({ title, body, icon: asset('icon.png'), silent: false });
-  n.on('click', () => showWindow('navigate', date));
+  const n = new Notification({ icon: asset('icon.png'), ...opts });
+  const release = () => {
+    clearTimeout(timer);
+    liveNotifications.delete(n);
+  };
+  const timer = setTimeout(release, NOTIFICATION_KEEP);
+  liveNotifications.add(n);
+  n.on('click', () => {
+    release();
+    if (onClick) onClick();
+  });
+  n.on('failed', release);
   n.show();
+}
+
+function notify({ title, body, date }) {
+  showNotification({ title, body, silent: false }, () => showWindow('navigate', date));
 }
 
 // 자동 업데이트는 설치형에서만 (개발 모드·포터블판은 제외)
@@ -210,14 +234,10 @@ function setupUpdater() {
     onStatus: (status) => { if (win) win.webContents.send('update-status', status); },
     onReady: (status) => {
       if (tray) tray.setContextMenu(trayMenu());
-      if (!Notification.isSupported()) return;
-      const n = new Notification({
+      showNotification({
         title: `새 버전 ${status.newVersion}을 설치할 준비가 됐어요`,
         body: '클릭하면 재시작해서 업데이트해요. 그냥 두면 다음에 앱을 종료할 때 설치돼요.',
-        icon: asset('icon.png'),
-      });
-      n.on('click', () => updater.install());
-      n.show();
+      }, () => updater.install());
     },
   });
   updater.start();
@@ -261,17 +281,20 @@ function registerIpc() {
     const l = cal.getLunarCalendar();
     return { month: l.month, day: l.day, leap: !!l.intercalation };
   });
-  handle('event:get', (id) => store.data.events.find((e) => e.id === id) || null);
+  handle('search', (query) => searchEvents(store.data.events, query));
+  handle('event:get',(id) => store.data.events.find((e) => e.id === id) || null);
   handle('event:create', (input) => {
     const ev = store.mutate((d) => events.createEvent(d, input));
     return ev;
   });
   handle('event:update', (id, opts) => store.mutate((d) => events.updateEvent(d, id, opts)));
   handle('event:delete', (id, opts) => store.mutate((d) => events.deleteEvent(d, id, opts)));
+  handle('event:restore', (snapshot) => store.mutate((d) => events.restoreEvent(d, snapshot)));
 
   handle('memo:list', () => store.data.memos);
   handle('memo:save', (memo) => store.mutate((d) => events.saveMemo(d, memo)));
   handle('memo:delete', (id) => store.mutate((d) => events.deleteMemo(d, id)));
+  handle('memo:reorder', (ids) => store.mutate((d) => events.reorderMemos(d, ids)));
 
   handle('settings:get', () => store.data.settings);
   handle('settings:set', (patch) => {

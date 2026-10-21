@@ -55,6 +55,7 @@ function expandEvent(ev, rangeStart, rangeEnd) {
   const rs = typeof rangeStart === 'number' ? rangeStart : parse(rangeStart);
   const re = typeof rangeEnd === 'number' ? rangeEnd : parse(rangeEnd);
   const dur = durationOf(ev);
+  const repeatText = ev.recurrence ? describe(ev) : ''; // 화면은 이 문구를 그대로 쓴다
   const make = (startMs) => {
     const start = fmtLike(startMs, ev.start);
     return {
@@ -66,6 +67,7 @@ function expandEvent(ev, rangeStart, rangeEnd) {
       end: fmtLike(startMs + dur, ev.start),
       allDay: isDateOnly(ev.start),
       recurring: !!ev.recurrence,
+      repeatText,
     };
   };
 
