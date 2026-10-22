@@ -46,6 +46,9 @@ function iconImage(size) {
   return size ? img.resize({ width: size, height: size }) : img;
 }
 
+// 창 바탕색(styles.css의 --paper와 같은 값)
+const paperColor = () => (nativeTheme.shouldUseDarkColors ? '#12161f' : '#f3f5f8');
+
 function validBounds(b) {
   if (!b || typeof b.width !== 'number') return null;
   // 모니터가 바뀌어 화면 밖에 뜨는 걸 방지
@@ -72,7 +75,9 @@ function createWindow() {
     icon: asset('icon.png'),
     frame: false, // 기본 제목 표시줄·테두리 제거 (가장자리 크기 조절과 창 스냅은 유지)
     autoHideMenuBar: true,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#12161f' : '#f3f5f8',
+    backgroundColor: paperColor(),
+    // Windows 11이 창 둘레에 그리는 1px 테두리를 바탕색으로 칠해 보이지 않게 한다
+    accentColor: paperColor(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -118,6 +123,15 @@ function createWindow() {
     }
   });
   win.on('closed', () => { win = null; });
+
+  // 밝은/어두운 모드가 바뀌면 바탕색과 테두리 색도 따라간다
+  const syncTheme = () => {
+    if (!win) return;
+    win.setBackgroundColor(paperColor());
+    win.setAccentColor(paperColor());
+  };
+  nativeTheme.on('updated', syncTheme);
+  win.once('closed', () => nativeTheme.off('updated', syncTheme));
 
   // 최대화 상태를 화면에 알려 버튼 모양(최대화/이전 크기로)을 바꾼다
   const sendWinState = () => win && win.webContents.send('win-state', { maximized: win.isMaximized() });

@@ -125,11 +125,8 @@ window.addEventListener('resize', () => scrollbars.forEach((sb) => sb.update()))
 
 attachScrollbar($('#scroller'), document.body);
 
-// 위아래 가장자리 흐림: 그쪽으로 잘려 나간 내용이 있을 때만 켠다
-(function edgeBlur() {
-  const sc = $('#scroller');
-  const top = $('#edgeTop');
-  const bottom = $('#edgeBottom');
+// 위아래 가장자리 페이드: 그쪽으로 잘려 나간 내용이 있을 때만 켠다
+function attachEdgeFade(sc, top, bottom) {
   let frame = 0;
   const update = () => {
     frame = 0;
@@ -141,13 +138,24 @@ attachScrollbar($('#scroller'), document.body);
   sc.addEventListener('scroll', schedule, { passive: true });
   const ro = new ResizeObserver(schedule);
   ro.observe(sc);
-  ro.observe(sc.firstElementChild);
+  for (const child of sc.children) ro.observe(child);
   update();
-})();
+  return schedule;
+}
+attachEdgeFade($('#scroller'), $('#edgeTop'), $('#edgeBottom'));
+
 for (const d of document.querySelectorAll('dialog.sheet')) {
   attachScrollbar(d);
+  // 다이얼로그 안쪽 위아래에도 같은 페이드
+  const fade = (pos) => { const f = el('div', `edge-fade ${pos}`); f.setAttribute('aria-hidden', 'true'); return f; };
+  const top = fade('top');
+  const bottom = fade('bottom');
+  d.prepend(top);
+  d.append(bottom);
+  const refresh = attachEdgeFade(d, top, bottom);
+  d.addEventListener('toggle', refresh);
   // 열릴 때 등장 애니메이션이 끝난 뒤 위치를 다시 잰다
-  d.addEventListener('animationend', () => scrollbars.forEach((sb) => sb.update()));
+  d.addEventListener('animationend', () => { scrollbars.forEach((sb) => sb.update()); refresh(); });
 }
 
 // ── 위쪽 띠: 맨 위 가장자리에 마우스를 올리면 내려오기 ───────

@@ -26,9 +26,12 @@
   --c-slate: #5c6678;
 
   --titlebar: 34px;
+  /* 모서리: 버튼·입력칸·목록 줄은 s, 카드·다이얼로그·메뉴·토스트는 m, 알약은 완전히 둥글게 */
   --radius-s: 6px;
   --radius-m: 10px;
+  /* 그림자는 두 단계: 화면에 놓인 카드 / 그 위에 떠 있는 것(다이얼로그·메뉴·토스트·끄는 메모) */
   --shadow-sheet: 0 1px 0 rgba(27, 35, 51, .04), 0 12px 32px -12px rgba(27, 35, 51, .18);
+  --shadow-float: 0 1px 2px rgba(27, 35, 51, .06), 0 16px 40px -12px rgba(27, 35, 51, .32);
 
   /* 여백은 4·8·12·16px 네 단계만 쓴다.
      카드 안의 글자와 버튼은 모두 카드 끝에서 --card-px 떨어진 세로선에 맞춰 선다. */
@@ -63,6 +66,7 @@
     --c-teal: #45c0c5;
     --c-slate: #95a0b4;
     --shadow-sheet: 0 1px 0 rgba(0, 0, 0, .2), 0 16px 40px -16px rgba(0, 0, 0, .6);
+    --shadow-float: 0 1px 2px rgba(0, 0, 0, .3), 0 20px 48px -12px rgba(0, 0, 0, .7);
     color-scheme: dark;
   }
 }
@@ -175,11 +179,6 @@ body.maximized .win-btn .ic-restore { display: block; }
 .cal-head { display: flex; align-items: center; gap: 8px; padding: 0 0 8px; }
 .cal-titlebox { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
 .cal-title { font-size: var(--title-size); font-weight: 600; margin: 0; letter-spacing: -.01em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.today-chip {
-  flex: none; height: 24px; padding: 0 8px; border: 1px solid var(--line); border-radius: 12px;
-  background: transparent; color: var(--ink-2); font-size: 12px; font-weight: 500;
-}
-.today-chip:hover { background: var(--hover); }
 .cal-nav { display: flex; align-items: center; }
 .icon-btn svg.dots { stroke-width: 2.6; }
 
@@ -189,7 +188,7 @@ body.maximized .win-btn .ic-restore { display: block; }
   position: fixed; position-anchor: --more-btn; inset: auto; top: anchor(bottom); right: anchor(right);
   margin: 4px 0 0; min-width: 148px; padding: 4px;
   border: 1px solid var(--line); border-radius: var(--radius-m);
-  background: var(--sheet); color: var(--ink); box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .3);
+  background: var(--sheet); color: var(--ink); box-shadow: var(--shadow-float);
 }
 .menu button {
   display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px;
@@ -361,7 +360,7 @@ body.maximized .win-btn .ic-restore { display: block; }
 /* 끄는 중인 메모는 떠올라 마우스를 따라온다 (위치는 memos.js가 transform으로) */
 .memo-list .memo.lifted { /* hover·포커스 배경보다 우선 */
   z-index: 2; background: var(--sheet); border-top-color: transparent;
-  box-shadow: 0 14px 28px -10px rgba(0, 0, 0, .35), 0 0 0 1px var(--line-soft);
+  box-shadow: var(--shadow-float), 0 0 0 1px var(--line-soft);
   scale: 1.02;
 }
 .memo { transition: scale .16s ease, box-shadow .16s ease, background-color .16s ease; }
@@ -387,18 +386,20 @@ body.memo-dragging .memo:not(.lifted) input[type="checkbox"]:not(:checked) { opa
 dialog.sheet {
   width: min(460px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
-  border: 0; padding: 0; border-radius: 12px;
+  border: 0; padding: 0; border-radius: var(--radius-m);
   background: var(--sheet); color: var(--ink);
-  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, .35);
+  box-shadow: var(--shadow-float);
   user-select: none;
 }
 dialog.sheet.small { width: min(340px, calc(100vw - 24px)); }
 dialog::backdrop { background: rgba(18, 22, 31, .38); }
 dialog[open] { animation: rise .16s ease-out; }
 @keyframes rise { from { transform: translateY(6px); opacity: 0; } }
-dialog form { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; }
-dialog h2 { font-size: 16px; font-weight: 600; margin: 0; }
-.sheet-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 0 0; }
+/* 여백·제목은 메인 카드와 같은 값: 글자와 ✕가 다이얼로그 끝에서 --card-px 선에 맞춰 선다 */
+dialog form { display: flex; flex-direction: column; gap: 12px; padding: var(--card-py) var(--card-px) var(--card-px); }
+dialog h2 { font-size: var(--title-size); font-weight: 600; margin: 0; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
+dialog form > h2:first-child { min-height: 32px; display: flex; align-items: center; } /* ✕ 없는 작은 창도 제목 높이를 맞춘다 */
 .sheet-foot { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
 .spacer { flex: 1; }
 
@@ -447,14 +448,18 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips:empty { display: none; }
-.rchip {
-  display: inline-flex; align-items: center; gap: 4px;
-  height: 28px; padding: 0 4px 0 10px; border-radius: 14px;
-  background: var(--line-soft); font-size: 13px;
+/* 알약: '오늘' 칩, 알림 칩, 공휴일 '추가'처럼 작은 버튼·태그는 모두 이 모양 */
+.pill {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  height: 26px; padding: 0 10px; border: 0; border-radius: 999px;
+  background: var(--line-soft); color: var(--ink-2); font-size: 12px; font-weight: 500; white-space: nowrap;
 }
-.rchip button { border: 0; background: transparent; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); padding: 0; }
-.rchip button:hover { background: var(--hover); color: var(--ink); }
-.rchip svg { width: 12px; height: 12px; stroke-width: 2; }
+button.pill:hover { background: var(--hover); color: var(--ink); }
+button.pill:disabled { opacity: .45; pointer-events: none; }
+.pill.removable { padding-right: 3px; }
+.pill.removable button { border: 0; background: transparent; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); padding: 0; }
+.pill.removable button:hover { background: var(--hover); color: var(--ink); }
+.pill.removable svg { width: 12px; height: 12px; stroke-width: 2; }
 
 .swatches { display: flex; gap: 8px; }
 .swatches label { position: relative; }
@@ -472,7 +477,9 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
 
 .setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; }
 .setting > span { display: flex; flex-direction: column; }
-.setting small { color: var(--muted); font-size: 12px; }
+.setting small, .setting-group legend small { color: var(--muted); font-size: 12px; }
+fieldset.setting-group legend { display: flex; flex-direction: column; font-size: inherit; color: inherit; margin-bottom: 4px; }
+#chAdd { margin-left: auto; } /* 입력칸 줄 오른쪽 끝 */
 .setting select { width: 140px; }
 .hint { color: var(--muted); font-size: 12px; margin: -4px 0 0; }
 .custom-holidays { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -487,8 +494,8 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
   position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
   display: flex; align-items: center; gap: 10px;
   background: var(--ink); color: var(--paper);
-  padding: 6px 6px 6px 14px; border-radius: 8px; font-size: 13px;
-  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .4);
+  padding: 6px 6px 6px 14px; border-radius: var(--radius-m); font-size: 13px;
+  box-shadow: var(--shadow-float);
   max-width: calc(100vw - 32px);
 }
 .toast .text-btn { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; height: 28px; }
@@ -550,7 +557,6 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
 
 
   dialog.sheet { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
-  dialog form { padding: 14px 14px 12px; gap: 10px; }
   /* 날짜·시간 칸이 잘리지 않게 '시작/종료' 글자를 위로 올린다 */
   .when-grid { grid-template-columns: 1fr 1fr; gap: 4px 6px; }
   .when-grid .lbl { grid-column: 1 / -1; font-size: 12px; }
@@ -566,28 +572,32 @@ fieldset.block legend { font-size: 13px; color: var(--muted); padding: 0; margin
 @media (prefers-reduced-motion: reduce) { .titlebar, body.tb-show .titlebar { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .memo, .memo .grip, input[type="checkbox"], input[type="checkbox"]::after { transition: none; } }
 
-/* ── 위아래 가장자리 흐림 ─────────────────────
-   스크롤해서 내용이 창 위/아래로 잘려 나갈 때, 그 경계를 흐리게 번지며 사라지게 한다.
-   잘려 나가는 내용이 있는 쪽에만 나타난다(.on). */
-.edge-blur {
-  position: fixed; left: 0; right: 0; z-index: 8;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .2s ease;
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
+/* ── 위아래 가장자리 페이드 ─────────────────────
+   스크롤해서 내용이 위/아래로 잘려 나갈 때, 그 경계를 바탕색으로 서서히 덮어 사라지게 한다.
+   잘려 나가는 내용이 있는 쪽에만 나타난다(.on). 메인 화면은 창 가장자리에, 다이얼로그는 그 안쪽 가장자리에 붙는다. */
+.edge-fade {
+  --fade-bg: var(--paper);
+  z-index: 8; pointer-events: none;
+  opacity: 0; transition: opacity .2s ease;
 }
-.edge-blur.top {
-  top: 0; height: 26px;
-  background: linear-gradient(to bottom, var(--paper) 0%, color-mix(in srgb, var(--paper) 55%, transparent) 45%, transparent 100%);
+.edge-fade.top {
+  height: 26px;
+  background: linear-gradient(to bottom, var(--fade-bg) 0%, color-mix(in srgb, var(--fade-bg) 55%, transparent) 45%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent);
   mask-image: linear-gradient(to bottom, #000 35%, transparent);
 }
-.edge-blur.bottom {
-  bottom: 0; height: 32px;
-  background: linear-gradient(to top, var(--paper) 0%, color-mix(in srgb, var(--paper) 55%, transparent) 45%, transparent 100%);
+.edge-fade.bottom {
+  height: 32px;
+  background: linear-gradient(to top, var(--fade-bg) 0%, color-mix(in srgb, var(--fade-bg) 55%, transparent) 45%, transparent 100%);
   -webkit-mask-image: linear-gradient(to top, #000 35%, transparent);
   mask-image: linear-gradient(to top, #000 35%, transparent);
 }
-.edge-blur.on { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { .edge-blur { transition: none; } }
+.edge-fade.on { opacity: 1; }
+.edge-fade.page { position: fixed; left: 0; right: 0; }
+.edge-fade.page.top { top: 0; }
+.edge-fade.page.bottom { bottom: 0; }
+/* 다이얼로그: 스크롤 영역(다이얼로그 자신) 안에 붙어 있게 sticky로. 음수 여백으로 자리는 차지하지 않는다 */
+dialog .edge-fade { --fade-bg: var(--sheet); position: sticky; display: block; z-index: 1; }
+dialog .edge-fade.top { top: 0; margin-bottom: -26px; }
+dialog .edge-fade.bottom { bottom: 0; margin-top: -32px; }
+@media (prefers-reduced-motion: reduce) { .edge-fade { transition: none; } }

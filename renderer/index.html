@@ -27,9 +27,9 @@
     </div>
   </div>
 
-  <!-- 위아래 가장자리에서 잘리는 내용을 흐리게 -->
-  <div class="edge-blur top" id="edgeTop" aria-hidden="true"></div>
-  <div class="edge-blur bottom" id="edgeBottom" aria-hidden="true"></div>
+  <!-- 위아래 가장자리에서 잘리는 내용을 페이드로 -->
+  <div class="edge-fade page top" id="edgeTop" aria-hidden="true"></div>
+  <div class="edge-fade page bottom" id="edgeBottom" aria-hidden="true"></div>
   <div class="scroller" id="scroller">
   <main class="page">
     <!-- 1. 달력 -->
@@ -38,7 +38,7 @@
         <div class="cal-titlebox">
           <h1 class="cal-title" id="calTitle">2026년 10월</h1>
           <!-- 오늘이 없는 달(주)을 볼 때만 나타난다 -->
-          <button class="today-chip" id="todayBtn" title="오늘로 이동 (T)" hidden>오늘</button>
+          <button class="pill" id="todayBtn" title="오늘로 이동 (T)" hidden>오늘</button>
         </div>
         <div class="cal-nav">
           <button class="icon-btn" id="prevBtn" title="이전 (Page Up)" aria-label="이전">
@@ -175,7 +175,6 @@
       <div class="sheet-foot">
         <button type="button" class="danger-btn" id="deleteEventBtn" hidden>삭제</button>
         <span class="spacer"></span>
-        <button type="button" class="text-btn" data-close>취소</button>
         <button type="submit" class="primary-btn">저장</button>
       </div>
     </form>
@@ -243,26 +242,24 @@
       <label class="setting"><span>창을 닫으면 트레이에서 계속 실행<small>꺼 두면 창을 닫을 때 앱이 종료되고 알림도 멈춰요.</small></span><input type="checkbox" name="closeToTray"></label>
       <label class="setting"><span>Windows 시작 시 자동 실행<small>설치한 앱에서만 적용돼요.</small></span><input type="checkbox" name="launchAtLogin"></label>
 
-      <fieldset class="block">
-        <legend>직접 추가한 공휴일</legend>
-        <p class="hint">선거일·임시공휴일처럼 새로 지정된 쉬는 날을 넣으면 달력에 빨간 날로 표시돼요.</p>
+      <fieldset class="block setting-group">
+        <legend>직접 추가한 공휴일<small>선거일·임시공휴일처럼 새로 지정된 쉬는 날을 넣으면 달력에 빨간 날로 표시돼요.</small></legend>
         <ul class="custom-holidays" id="customHolidayList"></ul>
         <div class="inline">
           <input type="date" id="chDate" aria-label="날짜">
           <input id="chName" placeholder="이름 (예: 임시공휴일)" maxlength="40">
-          <button type="button" class="text-btn" id="chAdd">추가</button>
+          <button type="button" class="pill" id="chAdd">추가</button>
         </div>
       </fieldset>
 
       <div class="setting">
         <span><span id="appVersion">버전</span><small id="updateText" aria-live="polite"></small></span>
-        <button type="button" class="text-btn" id="updateBtn">업데이트 확인</button>
+        <button type="button" class="pill" id="updateBtn">업데이트 확인</button>
       </div>
 
-      <div class="sheet-foot">
-        <button type="button" class="text-btn" id="openDataBtn">데이터 폴더 열기</button>
-        <span class="spacer"></span>
-        <button type="button" class="primary-btn" data-close>닫기</button>
+      <div class="setting">
+        <span>데이터<small>일정·메모가 저장된 폴더예요.</small></span>
+        <button type="button" class="pill" id="openDataBtn">폴더 열기</button>
       </div>
     </form>
   </dialog>

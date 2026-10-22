@@ -3,16 +3,22 @@
 Windows용 데스크톱 캘린더. 위에서부터 **달력 → 선택한 날짜의 일정 → 메모** 순서로 한 화면에 보입니다.
 
 - 월/주 달력, 일요일·공휴일 빨강 / 토요일 파랑, 창을 넓히면 날짜 칸에 일정 제목 표시
+  - 머리 줄: 제목 · ‹ › · 검색 · ⋯(월/주 보기, 설정). 오늘이 없는 달(주)을 볼 때만 제목 옆에 '오늘' 버튼이 나타남
 - 일정 추가·수정·삭제, 종일/여러 날 일정, 장소·설명, 색 7가지
+  - 삭제 후 되돌리기 (반복 일정도 포함)
+  - 고친 내용이 있는 채로 일정 창을 닫으면 한 번 확인
 - 반복: 매일 / 매주(요일 선택) / 매월(날짜·n번째 요일·마지막 요일) / 매년, 간격·종료일·횟수
   - 반복 일정 수정·삭제 시 **이 일정만 / 이후 일정 / 모든 일정** 선택
 - 알림: 일정마다 여러 개 (정시~1주 전, 종일 일정은 오전 9시 기준). 창을 닫아도 트레이에서 계속 실행
+  - 앱이 꺼져 있었거나 PC가 절전 중이라 놓친 알림은 최근 5분 이내 것만 울림 (깨어날 때 한꺼번에 울리지 않게)
+  - 알림을 누르면 그 날짜로 이동
 - 한국 공휴일 자동 계산: 설·추석·부처님 오신 날(음력), 대체공휴일 규칙, 2026년부터 공휴일인 노동절·제헌절 포함
   - 선거일·임시공휴일은 설정 → '직접 추가한 공휴일'에 넣으면 됩니다
 - 일정 검색: 제목·장소로 찾고, 결과를 누르면 그 날짜로 이동 (반복 일정은 다음 날짜로 표시)
 - 메모: 날짜와 상관없는 메모 여러 개, 입력 즉시 자동 저장, 삭제 후 되돌리기
   - 오른쪽 동그라미(또는 Alt+Enter)로 완료 표시, 왼쪽 손잡이를 끌거나 Alt+↑↓로 순서 바꾸기
 - 음력 날짜 표시, 다크 모드(시스템 설정 따름)
+- 테두리 없는 창: 창 맨 위 가장자리에 마우스를 올리면 창 버튼(최소화·최대화·닫기) 띠가 내려오고, 달력 머리 줄을 잡고 창을 옮길 수 있음
 
 ## 실행 (개발용)
 
@@ -23,24 +29,31 @@ npm install
 npm start
 ```
 
+- 개발 모드는 데이터를 `%APPDATA%\DeskCalendar-dev`에 따로 저장합니다. 설치된 앱과 동시에 띄워도 서로의 일정에 영향이 없고, 트레이 아이콘에 '(개발)'이 붙습니다.
+- 화면(`renderer/`)만 고쳤으면 앱 창에서 `Ctrl+R`로 새로고침하면 반영됩니다. `main.js`·`preload.js`·`src/`를 고쳤으면 트레이에서 종료하고 다시 `npm start` 하세요.
+
+```bash
+npm test                # 단위 테스트
+```
+
 ## 설치 파일 만들기
 
 Windows에서:
 
 ```bash
-npm run dist            # dist\DeskCalendar-Setup-1.0.0.exe     (설치형, 권장)
-npm run dist:portable   # dist\DeskCalendar-portable-1.0.0.exe  (설치 없이 실행)
+npm run dist            # dist\DeskCalendar-Setup-<버전>.exe     (설치형, 권장)
+npm run dist:portable   # dist\DeskCalendar-portable-<버전>.exe  (설치 없이 실행)
 ```
 
 로컬 빌드는 GitHub에 올리지 않습니다(`--publish never`). 배포는 아래 '새 버전 배포'로 하세요.
 
 ## 새 버전 배포 · 자동 업데이트
 
-`v`로 시작하는 태그를 push하면 GitHub Actions(`.github/workflows/release.yml`)가 Windows에서 빌드해
-[Releases](https://github.com/thatcathat/KSJ_Calender/releases)에 설치형·포터블과 `latest.yml`을 올립니다.
+`v`로 시작하는 태그를 push하면 GitHub Actions(`.github/workflows/release.yml`)가 Windows에서 테스트·빌드한 뒤,
+[Releases](https://github.com/thatcathat/KSJ_Calender/releases)에 설치형·포터블과 `latest.yml`을 한 번에 올립니다.
 
 ```bash
-npm version patch       # 1.0.0 → 1.0.1, package.json 수정·커밋·태그(v1.0.1)까지 한 번에 (기능 추가는 minor)
+npm version patch       # 예: 1.2.0 → 1.2.1, package.json 수정·커밋·태그(v1.2.1)까지 한 번에 (기능 추가는 minor)
 git push --follow-tags  # 커밋과 태그를 함께 push → 빌드 시작
 ```
 
@@ -62,34 +75,60 @@ git push --follow-tags  # 커밋과 태그를 함께 push → 빌드 시작
 | Page Up / Page Down | 이전 / 다음 달(주) |
 | T | 오늘로 |
 | N | 새 일정 |
-| Ctrl+F | 일정 검색 (Enter: 첫 결과로 이동, ↑↓: 결과 사이 이동) |
 | Enter / 날짜 더블클릭 | 그 날짜에 일정 추가 |
+| Ctrl+F | 일정 검색 (Enter: 첫 결과로 이동, ↑↓: 결과 사이 이동) |
+| Esc | 창 닫기 (일정 창은 고친 내용이 있으면 확인) |
+| Alt+Enter | (메모를 쓰는 중) 완료 켜기/끄기 |
+| Alt+↑ / Alt+↓ | (메모를 쓰는 중) 메모 순서 바꾸기 |
 
 ## 데이터
 
-`%APPDATA%\DeskCalendar\calendar-data.json` 에 저장됩니다(설정 → '데이터 폴더 열기').
-`npm start`로 띄운 개발 모드는 `%APPDATA%\DeskCalendar-dev`를 따로 써서, 설치된 앱과 동시에 띄워도 실제 일정에 영향이 없습니다.
-저장할 때마다 직전 상태를 `calendar-data.json.bak`으로 남기고, 파일이 깨지면 자동으로 백업에서 복구합니다.
-하루에 한 번은 `backups\calendar-data-YYYY-MM-DD.json`으로 그날 처음 저장하기 직전 상태를 남기고, 최근 7일치를 보관합니다.
-실수로 지운 일정은 이 파일을 `calendar-data.json`으로 바꿔 넣으면(앱을 끈 상태에서) 되살릴 수 있습니다.
+`%APPDATA%\DeskCalendar\calendar-data.json` 에 저장됩니다(설정 → 데이터 → '폴더 열기').
+
+- 저장할 때마다 직전 상태를 `calendar-data.json.bak`으로 남깁니다.
+- 하루에 한 번은 `backups\calendar-data-YYYY-MM-DD.json`으로 그날 처음 저장하기 직전 상태를 남기고, 최근 7일치를 보관합니다.
+- 파일이 깨지면 `.bak` → 최근 날짜별 백업 순서로 자동 복구합니다(깨진 파일은 `.broken-<시각>`으로 보관).
+- 실수로 지운 일정은 날짜별 백업 파일을 `calendar-data.json`으로 바꿔 넣으면(앱을 완전히 끈 상태에서) 되살릴 수 있습니다.
 
 ## 구조
 
 ```
-main.js            창·트레이·IPC·알림 연결
-preload.js         화면에 노출하는 API
-src/dates.js       날짜 유틸(시간대 영향 없는 문자열 날짜)
-src/holidays.js    한국 공휴일 계산
-src/updater.js     자동 업데이트(electron-updater, GitHub Releases)
-src/recurrence.js  반복 일정 전개(rrule)
-src/events.js      일정·메모 추가/수정/삭제 로직
-src/notifier.js    알림 스케줄러
-src/search.js      일정 검색
-src/store.js       JSON 저장소
-renderer/          화면 (HTML/CSS, 글꼴: IBM Plex Sans KR)
-renderer/js/       화면 스크립트 — 기능별 파일, index.html의 <script> 순서대로 전역을 함께 씀
-test/              단위 테스트 — npm test
+main.js              창·트레이·IPC·알림 연결
+preload.js           화면에 노출하는 API
+src/dates.js         날짜 유틸(시간대 영향 없는 문자열 날짜)
+src/holidays.js      한국 공휴일 계산
+src/recurrence.js    반복 일정 전개(rrule), 반복 설명 문구
+src/events.js        일정·메모 추가/수정/삭제/되살리기, 메모 순서
+src/search.js        일정 검색
+src/notifier.js      알림 스케줄러
+src/store.js         JSON 저장소(.bak, 날짜별 백업, 자동 복구)
+src/updater.js       자동 업데이트(electron-updater, GitHub Releases)
+renderer/            화면 (index.html, styles.css, 글꼴: IBM Plex Sans KR)
+renderer/js/         화면 스크립트 — 기능별 파일. index.html의 <script> 순서대로 실행되며 전역을 함께 씀
+  core.js            공통 유틸·상태·토스트
+  calendar.js        달력 칸, 머리 줄의 '오늘' 버튼
+  day.js             선택한 날짜의 일정 목록, 끝난 일정 흐리게
+  memos.js           메모(완료, 끌어서 순서 바꾸기)
+  event-dialog.js    일정 창, 닫기 전 확인
+  settings.js        설정 창, 업데이트 상태
+  search.js          검색 창
+  navigation.js      날짜 이동, 단축키, ⋯ 메뉴
+  window-chrome.js   창 버튼 띠, 직접 그리는 스크롤바, 위아래 페이드
+  init.js            시작
+test/                단위 테스트 — npm test
 ```
+
+## 화면 디자인 규칙
+
+새 화면 요소를 추가할 때 맞춰 주세요. 값은 `renderer/styles.css` 맨 위 `:root`에 모여 있습니다.
+
+- **여백**: 4·8·12·16px만 씁니다. 카드와 다이얼로그 안의 글자·버튼은 모두 끝에서 `--card-px`(16px) 떨어진 세로선에 맞춥니다. 목록 줄은 `--row-inset`만큼 안쪽에서 호버 배경을 칠하고, 글자는 같은 세로선에 둡니다.
+- **제목**: 카드·다이얼로그 제목은 `--title-size`. 설정 항목 이름은 검정 14px(+ 회색 12px 설명), 입력칸 위 라벨은 회색 13px.
+- **그림자**: 화면에 놓인 카드는 `--shadow-sheet`, 그 위에 떠 있는 것(다이얼로그·메뉴·토스트·끄는 메모)은 `--shadow-float`.
+- **모서리**: 버튼·입력칸·목록 줄은 `--radius-s`, 카드·다이얼로그·메뉴·토스트는 `--radius-m`, 작은 버튼·태그는 `.pill`(완전히 둥근 알약).
+- **닫기**: ✕는 항상 다이얼로그 오른쪽 위. 아래 버튼은 저장·삭제처럼 실제 동작만 둡니다(작은 확인 창은 버튼이 곧 선택지).
+- **체크박스**: 앱 전체가 같은 동그라미 모양(체크하면 진하게 채우고 체크 표시)입니다.
+- 창 둘레에 Windows 11이 그리는 1px 테두리는 `main.js`에서 바탕색(`--paper`와 같은 값)으로 칠해 보이지 않게 합니다. 바탕색을 바꾸면 두 곳을 함께 고치세요.
 
 ## 공휴일 규칙 메모
 

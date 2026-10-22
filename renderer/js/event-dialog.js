@@ -44,7 +44,7 @@ function fillReminderAdd() {
   const chips = $('#reminderChips');
   chips.replaceChildren();
   for (const m of reminders) {
-    const c = el('span', 'rchip', reminderLabel(m, allDay));
+    const c = el('span', 'pill removable', reminderLabel(m, allDay));
     const x = el('button');
     x.type = 'button';
     x.setAttribute('aria-label', `${reminderLabel(m, allDay)} 알림 삭제`);
