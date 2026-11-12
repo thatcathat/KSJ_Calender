@@ -7,8 +7,15 @@
 //! - 매월: 시작일과 같은 날짜(없는 달은 건너뜀) / n번째 요일(없는 달은 건너뜀) / 마지막 요일
 //! - 매년: 시작일과 같은 월·일(2월 29일은 윤년에만)
 //! - 시작일 자체도 규칙에 맞을 때만 발생으로 친다. 횟수는 시작일부터 센다.
+//!
+//! rrule에 없는 이 앱만의 규칙: 음력 매년 반복 (`calendar: "lunar"`)
+//! - 시작일의 음력 월·일을 해마다 양력으로 바꿔서 쓴다. 첫 발생은 늘 시작일 자신.
+//! - 시작일이 윤달이면 다음 해부터는 같은 숫자의 평달로 (윤달은 몇 해에 한 번만 있어서)
+//! - 30일인데 그해 그 달이 29일까지면 29일(그 달 마지막 날)로
+//! - 음력 표가 끝나는 해(lunar::LAST_YEAR) 뒤로는 발생이 없다
 
 use crate::dates::{civil_from_days, day_index, days_from_civil, days_in_month, fmt_like, is_date_only, parse, weekday_of_day, DAY, HOUR};
+use crate::lunar::{lunar_to_solar, solar_to_lunar, LunarDate, LAST_YEAR};
 use crate::model::{Event, Freq, MonthlyMode};
 use serde_json::{json, Value};
 
@@ -57,6 +64,8 @@ struct Rule {
     week_offsets: Vec<i64>,
     /// 매월: 날짜 또는 (요일, n번째; -1이면 마지막)
     monthly: Monthly,
+    /// 음력 매년 반복이면 시작일의 음력 날짜
+    lunar: Option<LunarDate>,
     count: Option<i64>,
     until: Option<i64>,
 }
@@ -65,6 +74,22 @@ struct Rule {
 enum Monthly {
     Day(u32),
     Nth(u32, i32),
+}
+
+/// 양력 floating ms의 음력 날짜. 음력 표 밖이면 오류
+fn lunar_date_of(ms: i64) -> Result<LunarDate, String> {
+    let (y, m, d) = civil_from_days(day_index(ms));
+    i32::try_from(y)
+        .ok()
+        .and_then(|y| solar_to_lunar(y, m, d))
+        .ok_or_else(|| format!("음력으로 바꿀 수 없는 날짜예요({LAST_YEAR}년까지만 가능)."))
+}
+
+/// 그해 음력 (평달) 월·일의 양력 날 번호. 30일이 없는 달이면 29일로.
+fn lunar_day_in_year(year: i32, month: u32, day: u32) -> Option<i64> {
+    lunar_to_solar(year, month, day, false)
+        .or_else(|| if day == 30 { lunar_to_solar(year, month, 29, false) } else { None })
+        .map(|(y, m, d)| days_from_civil(i64::from(y), i64::from(m), i64::from(d)))
 }
 
 fn build_rule(ev: &Event) -> Result<Rule, String> {
@@ -97,6 +122,7 @@ fn build_rule(ev: &Event) -> Result<Rule, String> {
         (None, Some(u)) => (None, Some(parse(u)? + DAY - 1000)), // 종료일 포함
         (None, None) => (None, None),
     };
+    let lunar = if r.is_lunar_yearly() { Some(lunar_date_of(dtstart)?) } else { None };
     Ok(Rule {
         freq: r.freq,
         interval: r.interval.max(1),
@@ -104,6 +130,7 @@ fn build_rule(ev: &Event) -> Result<Rule, String> {
         time_of_day: dtstart - start_day * DAY,
         week_offsets,
         monthly,
+        lunar,
         count,
         until,
     })
@@ -146,6 +173,14 @@ impl Rule {
                 };
                 out.extend(day.map(|d| days_from_civil(y, i64::from(m), i64::from(d))));
             }
+            Freq::Yearly if self.lunar.is_some() => {
+                let l = self.lunar.expect("위에서 확인");
+                if k == 0 {
+                    out.push(self.start_day); // 윤달·30일이어도 시작일 자신은 발생
+                } else if let Some(day) = i32::try_from(step).ok().and_then(|s| lunar_day_in_year(l.year + s, l.month, l.day)) {
+                    out.push(day);
+                }
+            }
             Freq::Yearly => {
                 let (y, m, d) = civil_from_days(self.start_day);
                 let y = y + step;
@@ -181,6 +216,13 @@ impl Rule {
         let mut days = Vec::with_capacity(7);
         let first = self.first_period_near(lo);
         for k in first..first + MAX_PERIODS {
+            // 음력 표가 끝나면 더 셀 수 없다
+            if self
+                .lunar
+                .is_some_and(|l| i64::from(l.year) + k * self.interval > i64::from(LAST_YEAR))
+            {
+                return;
+            }
             self.period_days(k, &mut days);
             for &day in &days {
                 if day < self.start_day {
@@ -347,6 +389,12 @@ pub fn describe(ev: &Event) -> Result<String, String> {
                 }
                 _ => format!("{base} {dom}일"),
             }
+        }
+        Freq::Yearly if r.is_lunar_yearly() => {
+            // 윤달에 시작했어도 해마다 평달이라 '윤'은 붙이지 않는다
+            let l = lunar_date_of(start)?;
+            let base = if n == 1 { "매년".into() } else { format!("{n}년마다") };
+            format!("{base} 음력 {}월 {}일", l.month, l.day)
         }
         Freq::Yearly => format!("{} {month}월 {dom}일", if n == 1 { "매년".into() } else { format!("{n}년마다") }),
     };

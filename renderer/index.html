@@ -139,8 +139,10 @@
           <option value="weekly">매주</option>
           <option value="monthly">매월</option>
           <option value="yearly">매년</option>
+          <option value="yearly-lunar">매년 (음력)</option>
         </select>
         <div class="repeat-detail" id="repeatDetail" hidden>
+          <p class="hint" id="lunarHint" hidden></p>
           <label class="inline">
             <input type="number" name="interval" min="1" max="999" value="1">
             <span id="intervalUnit">주</span>마다

@@ -3,6 +3,7 @@
 use calendar_core::dates::{parse, to_floating};
 use calendar_core::events::{create_event, delete_event, delete_memo, reorder_memos, restore_event, save_memo, update_event};
 use calendar_core::holidays::{holidays_for_year, CustomHoliday, Kind};
+use calendar_core::lunar::lunar_to_solar;
 use calendar_core::model::{Data, Event};
 use calendar_core::notifier::{due_reminders, Notifier};
 use calendar_core::recurrence::{describe, expand_all, expand_event};
@@ -165,6 +166,94 @@ fn sort_all_day_first_then_time() {
     ];
     let ids: Vec<String> = all(&evs, "2026-10-21", "2026-10-22").into_iter().map(|o| o.event.id).collect();
     assert_eq!(ids, ["b", "c", "a"]);
+}
+
+// ── 음력 매년 반복 ───────────────────────────────
+fn solar(y: i32, m: u32, d: u32, leap: bool) -> String {
+    let (y, m, d) = lunar_to_solar(y, m, d, leap).expect("음력 표 안의 날짜");
+    format!("{y}-{m:02}-{d:02}")
+}
+
+fn lunar_yearly(start: &str, extra: Value) -> Event {
+    let mut rec = json!({ "freq": "yearly", "calendar": "lunar" });
+    for (k, v) in extra.as_object().unwrap() {
+        rec[k] = v.clone();
+    }
+    ev(json!({ "start": start, "end": calendar_core::dates::add_days(start, 1).unwrap(), "recurrence": rec }))
+}
+
+#[test]
+fn lunar_yearly_follows_lunar_date() {
+    // 음력 1월 1일(설날)에 시작 → 해마다 설날
+    let e = lunar_yearly("2026-02-17", json!({}));
+    let expected: Vec<String> = (2026..=2030).map(|y| solar(y, 1, 1, false)).collect();
+    assert_eq!(starts(&e, "2026-01-01", "2030-12-31"), expected);
+    assert_eq!(expected[1], "2027-02-07", "2027 설날과 같음");
+    assert_eq!(describe(&e).unwrap(), "매년 음력 1월 1일");
+    // 저장할 때 calendar가 그대로 남는다
+    assert_eq!(e.to_value()["recurrence"]["calendar"], "lunar");
+}
+
+#[test]
+fn lunar_yearly_from_leap_month_uses_regular_month_after() {
+    // 2025년 윤6월 1일에 시작 → 시작일 자신, 그다음부터는 평달 6월 1일
+    let start = solar(2025, 6, 1, true);
+    let e = lunar_yearly(&start, json!({}));
+    assert_eq!(
+        starts(&e, "2025-01-01", "2027-12-31"),
+        [start, solar(2026, 6, 1, false), solar(2027, 6, 1, false)]
+    );
+    assert_eq!(describe(&e).unwrap(), "매년 음력 6월 1일");
+}
+
+#[test]
+fn lunar_yearly_day_30_falls_back_to_29() {
+    // 그해엔 30일까지 있고 이듬해엔 29일까지인 달을 찾는다
+    let (y, m) = (2000..2049)
+        .flat_map(|y| (1..=12).map(move |m| (y, m)))
+        .find(|&(y, m)| lunar_to_solar(y, m, 30, false).is_some() && lunar_to_solar(y + 1, m, 30, false).is_none())
+        .expect("그런 달은 흔하다");
+    let e = lunar_yearly(&solar(y, m, 30, false), json!({ "count": 2 }));
+    assert_eq!(
+        starts(&e, &format!("{y}-01-01"), &format!("{}-12-31", y + 2)),
+        [solar(y, m, 30, false), solar(y + 1, m, 29, false)]
+    );
+}
+
+#[test]
+fn lunar_yearly_stops_after_table_and_counts() {
+    let e = lunar_yearly(&solar(2048, 3, 3, false), json!({}));
+    assert_eq!(starts(&e, "2040-01-01", "2099-12-31").len(), 3, "2048·2049·2050년까지만");
+    let every2 = lunar_yearly("2026-02-17", json!({ "interval": 2, "count": 3 }));
+    assert_eq!(
+        starts(&every2, "2026-01-01", "2040-12-31"),
+        [solar(2026, 1, 1, false), solar(2028, 1, 1, false), solar(2030, 1, 1, false)]
+    );
+    assert_eq!(describe(&every2).unwrap(), "2년마다 음력 1월 1일, 3회");
+}
+
+#[test]
+fn lunar_yearly_input_rules() {
+    let mut data = Data::default();
+    // 매년이 아니면 calendar는 무시
+    let weekly = create_event(
+        &mut data,
+        &json!({ "title": "w", "start": "2026-10-05", "recurrence": { "freq": "weekly", "calendar": "lunar" } }),
+    )
+    .unwrap();
+    assert!(weekly.recurrence.unwrap().calendar.is_none());
+    // 음력 표 밖이면 저장하지 않는다
+    let err = create_event(
+        &mut data,
+        &json!({ "title": "x", "start": "2051-03-01", "recurrence": { "freq": "yearly", "calendar": "lunar" } }),
+    );
+    assert!(err.unwrap_err().contains("2050년"));
+    // 양력 매년은 2051년도 괜찮다
+    assert!(create_event(
+        &mut data,
+        &json!({ "title": "y", "start": "2051-03-01", "recurrence": { "freq": "yearly" } })
+    )
+    .is_ok());
 }
 
 // ── 수정·삭제 범위 ───────────────────────────────

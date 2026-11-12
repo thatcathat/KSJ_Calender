@@ -52,9 +52,30 @@ pub struct Recurrence {
     pub count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub until: Option<String>,
+    /// 매년 반복을 음력 날짜로 (`"calendar": "lunar"`). 다른 반복에서는 쓰지 않는다.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub calendar: Option<CalendarKind>,
+}
+
+/// 반복 날짜를 어느 달력으로 셀지. 양력이 기본이라 음력만 둔다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalendarKind {
+    Lunar,
+}
+
+impl CalendarKind {
+    pub fn parse(v: Option<&Value>) -> Option<Self> {
+        (as_str(v) == Some("lunar")).then_some(Self::Lunar)
+    }
 }
 
 impl Recurrence {
+    /// 음력 매년 반복인지
+    pub fn is_lunar_yearly(&self) -> bool {
+        self.freq == Freq::Yearly && self.calendar == Some(CalendarKind::Lunar)
+    }
+
     /// 저장된 반복 정보 읽기. freq를 모르면 반복 없음으로 본다.
     pub fn from_value(v: &Value) -> Option<Self> {
         let freq = Freq::parse(as_str(field(v, "freq"))?)?;
@@ -75,6 +96,7 @@ impl Recurrence {
             }),
             count: js::parse_int(field(v, "count")),
             until: as_str(field(v, "until")).map(str::to_string),
+            calendar: CalendarKind::parse(field(v, "calendar")),
         })
     }
 

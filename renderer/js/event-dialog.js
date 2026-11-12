@@ -60,7 +60,7 @@ function startDateValue() { return form.startDate.value || state.selected; }
 function updateRepeatUI() {
   const freq = form.freq.value;
   $('#repeatDetail').hidden = !freq;
-  $('#intervalUnit').textContent = { daily: '일', weekly: '주', monthly: '개월', yearly: '년' }[freq] || '';
+  $('#intervalUnit').textContent = { daily: '일', weekly: '주', monthly: '개월', yearly: '년', 'yearly-lunar': '년' }[freq] || '';
   $('#weekdayPick').hidden = freq !== 'weekly';
   const mm = $('#monthlyMode');
   mm.hidden = freq !== 'monthly';
@@ -79,6 +79,28 @@ function updateRepeatUI() {
   const endMode = form.endMode.value;
   form.until.hidden = endMode !== 'until';
   $('#countWrap').hidden = endMode !== 'count';
+  updateLunarHint();
+}
+
+// 음력 반복: 시작일이 음력으로 며칠인지, 윤달·30일이면 어떻게 되는지 알려 준다
+let lunarHintSeq = 0;
+function updateLunarHint() {
+  const hint = $('#lunarHint');
+  hint.hidden = form.freq.value !== 'yearly-lunar';
+  if (hint.hidden) return;
+  const seq = ++lunarHintSeq;
+  api.lunar(startDateValue()).then((l) => {
+    if (seq !== lunarHintSeq) return; // 그사이 날짜를 또 바꿈
+    if (!l) {
+      hint.textContent = '이 날짜는 음력으로 바꿀 수 없어요(2050년까지만 가능).';
+      return;
+    }
+    let text = l.leap
+      ? `윤${l.month}월이라 다음 해부터는 평달 음력 ${l.month}월 ${l.day}일에 반복해요.`
+      : `해마다 음력 ${l.month}월 ${l.day}일에 반복해요.`;
+    if (l.day === 30) text += ' 그달이 29일까지인 해에는 29일에 해요.';
+    hint.textContent = text;
+  }).catch(() => { hint.hidden = true; });
 }
 
 function setAllDayUI() {
@@ -111,7 +133,7 @@ function openEventDialog({ occ, date, startTime } = {}) {
     reminders = [...(occ.reminders || [])];
     const r = occ.recurrence;
     if (r) {
-      form.freq.value = r.freq;
+      form.freq.value = r.freq === 'yearly' && r.calendar === 'lunar' ? 'yearly-lunar' : r.freq;
       form.interval.value = r.interval || 1;
       (r.byweekday || []).forEach((wd) => $(`#weekdayPick button[data-wd="${wd}"]`).setAttribute('aria-pressed', 'true'));
       form.endMode.value = r.count ? 'count' : r.until ? 'until' : 'never';
@@ -163,7 +185,10 @@ function collectForm() {
   let recurrence = null;
   const freq = form.freq.value;
   if (freq) {
-    recurrence = { freq, interval: +form.interval.value || 1 };
+    // '매년 (음력)'은 저장할 때 매년 반복 + calendar: 'lunar'
+    recurrence = freq === 'yearly-lunar'
+      ? { freq: 'yearly', calendar: 'lunar', interval: +form.interval.value || 1 }
+      : { freq, interval: +form.interval.value || 1 };
     if (freq === 'weekly') {
       recurrence.byweekday = [...$('#weekdayPick').querySelectorAll('button[aria-pressed="true"]')].map((b) => +b.dataset.wd);
       if (!recurrence.byweekday.length) recurrence.byweekday = [wdOf(sd)];

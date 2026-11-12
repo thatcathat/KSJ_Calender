@@ -21,6 +21,8 @@ const SOLAR_MIN: i64 = 1000_02_13;
 #[allow(clippy::inconsistent_digit_grouping)]
 const SOLAR_MAX: i64 = 2050_12_31;
 const SOLAR_LUNAR_DAY_DIFF: i64 = 43;
+/// 음력 표의 마지막 해
+pub const LAST_YEAR: i32 = 2050;
 const SOLAR_DAYS: [i64; 13] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 29];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
