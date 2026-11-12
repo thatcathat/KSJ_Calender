@@ -36,6 +36,26 @@ npm start
 npm test                # 단위 테스트
 ```
 
+## Tauri(Rust)판 — 옮기는 중
+
+Electron을 Tauri 2로 바꾸는 중입니다. 화면(`renderer/`)은 그대로 쓰고, 뒷단을 Rust로 다시 썼습니다.
+지금은 두 판이 나란히 있고, 옮기기가 끝나면 Electron 파일(`main.js`, `preload.js`, `src/`, `test/`)을 지웁니다.
+
+준비물: Node.js 20 이상, [Rust](https://rustup.rs), Visual Studio의 'C++를 사용한 데스크톱 개발'(MSVC·Windows SDK)
+
+```bash
+npm run tauri:dev       # 개발용 실행 (데이터는 %APPDATA%\DeskCalendar-dev, Electron 개발판과 같은 폴더)
+npm run test:rust       # Rust 단위 테스트
+npm run tauri:build     # src-tauri\target\release\bundle\nsis\ 에 설치 파일
+```
+
+- `src-tauri/core/` 화면과 상관없는 로직(날짜·음력·공휴일·반복·일정·메모·검색·저장소·알림 계산). 예전 `src/*.js`를 그대로 옮겼고, `core/tests/core.rs`는 예전 `test/core.test.js`를 옮긴 것
+- `src-tauri/src/` 창·트레이·알림·화면 명령(`commands.rs`)
+- `renderer/js/tauri-api.js` 화면이 쓰는 `window.api`를 Tauri 명령으로 만든다(예전 `preload.js` 자리). 창 끌기도 여기서 처리
+- 저장 파일은 예전 앱과 같은 위치·같은 형식이라 그대로 이어서 씁니다.
+- 트레이로 닫으면 창만 숨기지 않고 화면 엔진(WebView2)까지 닫아 메모리를 돌려줍니다(창이 열려 있을 때 약 190MB → 트레이에서 약 10MB). 알림·저장은 Rust 쪽이라 그대로 돌아가고, 다시 열 때 화면을 새로 띄우느라 1초쯤 걸립니다. 대화상자(일정 쓰기 등)가 열려 있으면 쓰던 내용이 사라지지 않게 예전처럼 숨기기만 합니다. 로그인 때 트레이로 시작하면 처음 열 때까지 화면 엔진을 띄우지 않습니다.
+- 아직 없는 것: 자동 업데이트, 포터블판 알림용 시작 메뉴 바로가기, 릴리스 워크플로
+
 ## 설치 파일 만들기
 
 Windows에서:

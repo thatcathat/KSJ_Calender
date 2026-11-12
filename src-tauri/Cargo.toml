@@ -1,0 +1,35 @@
+[workspace]
+members = ["core"]
+resolver = "2"
+
+[package]
+name = "desk-calendar"
+# 앱 버전은 package.json 하나로 관리한다(tauri.conf.json이 거기서 읽어 감). 이 값은 쓰지 않는다.
+version = "0.0.0"
+edition = "2021"
+description = "한국 공휴일과 반복 일정·알림을 지원하는 데스크톱 캘린더"
+license = "MIT"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+calendar-core = { path = "core" }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[target.'cfg(windows)'.dependencies]
+# 알림을 눌렀을 때 그 날짜로 이동하려면 클릭 이벤트가 필요해 WinRT 알림을 직접 쓴다
+tauri-winrt-notification = "0.8"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

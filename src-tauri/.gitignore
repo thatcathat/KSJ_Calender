@@ -1,0 +1,4 @@
+# Rust 빌드 결과
+/target/
+# tauri-build가 빌드할 때마다 새로 만드는 권한 스키마
+/gen/schemas
