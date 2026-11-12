@@ -1,8 +1,8 @@
 'use strict';
-// Tauri로 실행될 때 화면이 쓰는 window.api를 만든다. 모양은 예전 Electron preload.js와 같다.
-// 명령은 src-tauri/src/commands.rs에 있다. (Electron으로 실행되면 preload.js가 이미 만들어 두므로 아무것도 안 함)
+// 화면 스크립트들이 쓰는 window.api를 Tauri 명령(src-tauri/src/commands.rs)으로 만든다.
+// index.html에서 다른 스크립트보다 먼저 불러야 한다.
 (function setupTauriApi() {
-  if (window.api || !window.__TAURI__) return;
+  if (!window.__TAURI__) return; // 앱 밖(브라우저)에서 열었을 때
   const { invoke } = window.__TAURI__.core;
   const { listen } = window.__TAURI__.event;
 
@@ -83,8 +83,8 @@
   });
 
   // ── 창 옮기기 ──
-  // Electron은 CSS -webkit-app-region: drag 로 잡고 끌었지만 WebView2에선 동작하지 않는다.
-  // 같은 영역(styles.css에서 drag로 표시한 곳)에서 누른 채 움직이면 창 끌기를 시작하고, 두 번 누르면 최대화한다.
+  // 테두리 없는 창이라 위쪽 띠와 달력 머리 줄을 손잡이로 쓴다(CSS -webkit-app-region은 WebView2에서 동작하지 않음).
+  // 누른 채 움직이면 창 끌기를 시작하고, 두 번 누르면 최대화한다. 버튼 등은 제외.
   const DRAG = '.titlebar, .cal-head';
   const NO_DRAG = 'button, input, select, textarea, a, label, .win-controls';
   const dragArea = (target) => target instanceof Element && target.closest(DRAG) && !target.closest(NO_DRAG);

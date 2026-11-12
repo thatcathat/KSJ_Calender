@@ -20,11 +20,22 @@
     "shortDescription": "데스크 캘린더",
     "longDescription": "한국 공휴일과 반복 일정·알림을 지원하는 데스크톱 캘린더",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
         "installMode": "currentUser",
         "languages": ["Korean"],
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZBMjAwMUUyQjk2MUY0QjcKUldTMzlHRzU0Z0VnK2p2dXh3Q1hDU25oRjAxeE1oK2ErNm5TbExjNkFOQVZSbFlKaFViajdLZ0oK",
+      "endpoints": ["https://github.com/thatcathat/KSJ_Calender/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

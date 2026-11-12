@@ -1,9 +1,8 @@
-//! 화면(renderer)이 부르는 명령. renderer/js/tauri-api.js가 예전 preload.js와 같은 `window.api`로 감싼다.
+//! 화면(renderer)이 부르는 명령. renderer/js/tauri-api.js가 `window.api`로 감싼다.
 //! 실패하면 오류 문구(String)가 화면의 Promise reject로 간다.
 
 use crate::state::AppState;
-use crate::window;
-use crate::DEV;
+use crate::{updater, window, DEV};
 use calendar_core::dates::{parse, today_str};
 use calendar_core::events;
 use calendar_core::holidays::holiday_map;
@@ -162,24 +161,22 @@ pub async fn data_open_folder(app: AppHandle, state: State<'_, AppState>) -> Res
     app.opener().open_path(dir, None::<&str>).map_err(|e| e.to_string())
 }
 
-// ── 업데이트 (아직 Tauri판은 자동 업데이트 없음) ───────────
+// ── 업데이트 (src/updater.rs) ─────────────────────
 
-fn update_unsupported(app: &AppHandle) -> Value {
-    json!({ "state": "unsupported", "version": app.package_info().version.to_string() })
+#[tauri::command]
+pub async fn update_status(app: AppHandle) -> Res<updater::Status> {
+    Ok(updater::status(&app))
 }
 
 #[tauri::command]
-pub async fn update_status(app: AppHandle) -> Res<Value> {
-    Ok(update_unsupported(&app))
+pub async fn update_check(app: AppHandle) -> Res<updater::Status> {
+    Ok(updater::check(&app).await)
 }
 
+/// 받아 둔 새 버전을 설치하고 다시 띄운다 (앱은 여기서 끝난다)
 #[tauri::command]
-pub async fn update_check(app: AppHandle) -> Res<Value> {
-    Ok(update_unsupported(&app))
-}
-
-#[tauri::command]
-pub async fn update_install() -> Res<()> {
+pub async fn update_install(app: AppHandle) -> Res<()> {
+    updater::install(&app, true);
     Ok(())
 }
 

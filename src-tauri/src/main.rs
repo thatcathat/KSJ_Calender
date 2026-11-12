@@ -5,6 +5,7 @@ mod commands;
 mod notify;
 mod state;
 mod tray;
+mod updater;
 mod window;
 
 use calendar_core::dates::{now_floating, today_str, MIN};
@@ -32,6 +33,7 @@ fn main() {
             Some(vec!["--hidden"]),
         ))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::range,
             commands::holidays,
@@ -65,6 +67,7 @@ fn main() {
             // 예전 앱과 같은 폴더: %APPDATA%\DeskCalendar
             let dir = app.path().data_dir()?.join(if DEV { "DeskCalendar-dev" } else { "DeskCalendar" });
             app.manage(AppState::new(Store::open(dir)?));
+            app.manage(updater::Updater::default());
             // 로그인 때 트레이로 시작하면 창(과 화면 엔진)은 처음 열 때 만든다
             if !start_hidden {
                 window::create(app.handle())?;
@@ -72,6 +75,7 @@ fn main() {
             tray::create(app.handle())?;
             commands::apply_login_item(app.handle());
             start_background(app.handle().clone());
+            updater::start(app.handle().clone());
             Ok(())
         })
         .build(tauri::generate_context!())

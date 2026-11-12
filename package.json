@@ -2,15 +2,12 @@
   "name": "desk-calendar",
   "version": "1.2.1",
   "description": "한국 공휴일과 반복 일정·알림을 지원하는 데스크톱 캘린더",
-  "main": "main.js",
+  "private": true,
   "scripts": {
-    "start": "electron .",
-    "test": "node --test test/*.test.js",
-    "dist": "electron-builder --win nsis --publish never",
-    "dist:portable": "electron-builder --win portable --publish never",
-    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "tauri:build": "tauri build",
-    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --workspace"
+    "start": "tauri dev --config src-tauri/tauri.dev.conf.json",
+    "build": "tauri build",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml --workspace",
+    "tauri": "tauri"
   },
   "license": "MIT",
   "author": "thatcathat",
@@ -18,51 +15,7 @@
     "type": "git",
     "url": "https://github.com/thatcathat/KSJ_Calender.git"
   },
-  "dependencies": {
-    "electron-updater": "^6.8.9",
-    "korean-lunar-calendar": "^0.4.0",
-    "rrule": "^2.8.1"
-  },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.12.4",
-    "electron": "^45.0.0",
-    "electron-builder": "^26.15.3"
-  },
-  "productName": "DeskCalendar",
-  "build": {
-    "appId": "com.deskcalendar.app",
-    "productName": "DeskCalendar",
-    "files": [
-      "main.js",
-      "preload.js",
-      "src/**/*",
-      "renderer/**/*",
-      "assets/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "shortcutName": "데스크 캘린더",
-      "uninstallDisplayName": "데스크 캘린더",
-      "artifactName": "DeskCalendar-Setup-${version}.${ext}"
-    },
-    "portable": {
-      "artifactName": "DeskCalendar-portable-${version}.${ext}"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "thatcathat",
-      "repo": "KSJ_Calender",
-      "releaseType": "release"
-    },
-    "directories": {
-      "output": "dist"
-    }
+    "@tauri-apps/cli": "^2.12.4"
   }
 }
