@@ -3,7 +3,7 @@
 
 use crate::dates::{add_days, fmt_like, is_date_only, now_iso, parse, DAY, HOUR};
 use crate::js::{self, as_str, field, is_valid_id, to_number, truncate_utf16, truthy};
-use crate::model::{Data, Event, Freq, Memo, MonthlyMode, Recurrence};
+use crate::model::{CalendarKind, Data, Event, Freq, Memo, MonthlyMode, Recurrence};
 use crate::recurrence::{count_before, duration_of};
 use serde_json::{Map, Value};
 
@@ -44,6 +44,8 @@ pub fn clean_recurrence(r: Option<&Value>) -> Option<Recurrence> {
     } else if let Some(u) = as_str(field(r, "until")).filter(|u| is_ymd(u)) {
         until = Some(u.to_string());
     }
+    // 음력은 매년 반복에서만
+    let calendar = CalendarKind::parse(field(r, "calendar")).filter(|_| freq == Freq::Yearly);
     Some(Recurrence {
         freq,
         interval,
@@ -51,6 +53,7 @@ pub fn clean_recurrence(r: Option<&Value>) -> Option<Recurrence> {
         monthly_mode,
         count,
         until,
+        calendar,
     })
 }
 
@@ -139,6 +142,11 @@ pub fn clean_fields(input: &Value) -> Result<Fields, String> {
         .filter(|c| COLORS.contains(c))
         .unwrap_or("blue")
         .to_string();
+    let recurrence = clean_recurrence(field(input, "recurrence"));
+    // 음력 표 밖의 날짜로 음력 반복을 만들면 한 번도 안 보이는 일정이 되므로 막는다
+    if recurrence.as_ref().is_some_and(Recurrence::is_lunar_yearly) && lunar_of(s).is_none() {
+        return Err(format!("음력 반복은 {}년까지의 날짜에만 쓸 수 있어요.", crate::lunar::LAST_YEAR));
+    }
     Ok(Fields {
         title,
         start,
@@ -147,8 +155,13 @@ pub fn clean_fields(input: &Value) -> Result<Fields, String> {
         location: truncate_utf16(&js::to_string(field(input, "location")), 300),
         memo: truncate_utf16(&js::to_string(field(input, "memo")), 5000),
         reminders,
-        recurrence: clean_recurrence(field(input, "recurrence")),
+        recurrence,
     })
+}
+
+fn lunar_of(ms: i64) -> Option<crate::lunar::LunarDate> {
+    let (y, m, d, ..) = crate::dates::parts(ms);
+    crate::lunar::solar_to_lunar(i32::try_from(y).ok()?, m, d)
 }
 
 pub fn create_event(data: &mut Data, input: &Value) -> Result<Event, String> {
