@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <!-- connect-src의 ipc:·ipc.localhost는 Tauri가 화면↔Rust 명령을 주고받는 통로 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>데스크 캘린더</title>
   <link rel="stylesheet" href="fonts/plex-kr.css">
@@ -270,6 +271,7 @@
   </div>
 
   <!-- 순서대로 실행되며 전역을 함께 쓴다. 앞 파일의 것을 뒤 파일이 쓰므로 순서를 바꾸지 말 것 -->
+  <script src="js/tauri-api.js"></script>
   <script src="js/core.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/day.js"></script>
