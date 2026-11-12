@@ -3,6 +3,7 @@
 
 mod commands;
 mod notify;
+mod shortcuts;
 mod state;
 mod tray;
 mod updater;
@@ -74,6 +75,14 @@ fn main() {
             }
             tray::create(app.handle())?;
             commands::apply_login_item(app.handle());
+            // 설치형이면 바탕화면 바로가기 이름을 한글로 (shortcuts.rs 참고)
+            if updater::supported() {
+                if let Ok(desktop) = app.path().desktop_dir() {
+                    if let Err(err) = shortcuts::fix_desktop_name(&desktop) {
+                        eprintln!("바탕화면 바로가기 이름을 바꾸지 못했어요: {err}");
+                    }
+                }
+            }
             start_background(app.handle().clone());
             updater::start(app.handle().clone());
             Ok(())
